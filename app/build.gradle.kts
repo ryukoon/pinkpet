@@ -10,7 +10,7 @@ android {
     defaultConfig {
         minSdk = 30
         targetSdk = 35
-        versionCode = 5
+        versionCode = 6
         versionName = "2.1"
     }
 
@@ -35,6 +35,11 @@ android {
             dimension = "app"
             applicationId = "com.ryukoon.suafamily"
             manifestPlaceholders["appLabel"] = "수아네 펫"
+        }
+        create("kids") {
+            dimension = "app"
+            applicationId = "com.ryukoon.siawoo"
+            manifestPlaceholders["appLabel"] = "시아·정우 펫"
         }
     }
 

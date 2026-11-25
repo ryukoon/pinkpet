@@ -138,6 +138,22 @@ abstract class PixelSprite {
             "catears" -> { px(5 + hx, 0 + hy, 2, 2, c("#ffe0ec")); px(14 + hx, 0 + hy, 2, 2, c("#ffe0ec")); px(5 + hx, 1 + hy, 1, 1, c("#ff9ac0")); px(15 + hx, 1 + hy, 1, 1, c("#ff9ac0")); px(6 + hx, 2 + hy, 9, 1, w) }
             "headset" -> { px(5 + hx, 1 + hy, 11, 1, dark); px(3 + hx, 6 + hy, 2, 3, c("#4ad06a")); px(16 + hx, 6 + hy, 2, 3, c("#4ad06a")) }
             "backpack" -> { px(2, by + 1, 3, 5, c("#ff8fb0")); px(2, by + 2, 3, 1, c("#ffd0e0")) }
+            "basketball" -> { px(ax - 1, ay - 3, 3, 3, c("#e8792a")); px(ax, ay - 3, 1, 3, c("#5a2a10")); px(ax - 1, ay - 2, 3, 1, c("#5a2a10")) }
+            "blackball" -> { px(ax - 1, ay - 3, 3, 3, c("#2a2a2e")); px(ax, ay - 3, 1, 1, c("#55555c")) }
+            "ballDown" -> { px(ax - 1, 19, 3, 3, c("#e8792a")); px(ax, 19, 1, 3, c("#5a2a10")) }
+            "medal" -> { px(9, by, 1, 2, c("#e8312a")); px(11, by, 1, 2, c("#2a52be")); px(9, by + 2, 3, 2, c("#ffcc33")); px(10, by + 2, 1, 1, c("#fff2a0")) }
+            "trophy" -> { px(ax - 1, ay - 4, 3, 2, c("#ffcc33")); px(ax, ay - 2, 1, 1, c("#e0a020")); px(ax - 1, ay - 1, 3, 1, c("#e0a020")) }
+            "bib" -> { px(7, by + 1, 7, 3, w); px(8, by + 2, 1, 1, c("#e8312a")); px(10, by + 2, 1, 1, c("#e8312a")); px(12, by + 2, 1, 1, c("#e8312a")) }
+            "goggles" -> { px(6 + hx, 7 + hy, 3, 1, c("#2ad0ff")); px(12 + hx, 7 + hy, 3, 1, c("#2ad0ff")); px(4 + hx, 7 + hy, 2, 1, dark); px(15 + hx, 7 + hy, 2, 1, dark); px(9 + hx, 7 + hy, 3, 1, dark) }
+            "swimcap" -> { px(5 + hx, 1 + hy, 11, 4, c("#2a52be")); px(7 + hx, 2 + hy, 3, 1, c("#5a82ee")) }
+            "sunglasses" -> { px(6 + hx, 7 + hy, 4, 2, dark); px(11 + hx, 7 + hy, 4, 2, dark); px(10 + hx, 7 + hy, 1, 1, dark); px(7 + hx, 7 + hy, 1, 1, c("#6a6a80")); px(12 + hx, 7 + hy, 1, 1, c("#6a6a80")) }
+            "mic" -> { px(ax, ay - 3, 2, 2, c("#777788")); px(ax, ay - 1, 1, 2, dark) }
+            "beef" -> { px(4, 19, 13, 1, c("#555560")); px(5, 20, 1, 2, c("#555560")); px(15, 20, 1, 2, c("#555560")); px(6, 18, 3, 1, c("#c0404a")); px(11, 18, 3, 1, c("#a03040")); px(7, 18, 1, 1, c("#f0c0c0")) }
+            "board" -> { px(ax - 1, ay - 5, 2, 6, c("#d8b07a")); px(ax - 1, ay - 3, 2, 1, c("#b08050")) }
+            "water" -> { px(ax, ay - 4, 2, 4, c("#5bc0ff")); px(ax, ay - 5, 2, 1, w) }
+            "stopwatch" -> { px(ax - 1, ay - 2, 3, 3, c("#cfcfd8")); px(ax, ay - 1, 1, 1, dark); px(ax, ay - 3, 1, 1, c("#cfcfd8")) }
+            "flag" -> { px(ax, ay - 6, 1, 7, c("#8a6a4a")); px(ax + 1, ay - 6, 4, 3, w); px(ax + 2, ay - 5, 1, 1, c("#d8343a")); px(ax + 3, ay - 5, 1, 1, c("#2a52be")) }
+            "baton" -> { px(ax, ay - 3, 1, 4, c("#ffcc33")) }
         }
     }
 }

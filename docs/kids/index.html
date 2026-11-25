@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="시아·정우 펫">
+<meta name="theme-color" content="#2d2552">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>시아·정우 펫</title>
+<style>
+/* VOICE: 장난스러운 8bit 다마고치
+   IDEA: 폰 홈 화면 위를 돌아다니는 펫 친구들
+   PICTURE: 여유곰과 부장님 도트 캐릭터, 아이콘이 발판
+   COLOUR/TYPE: 보랏빛 노을 배경, 픽셀 외곽선 글자
+   LAYOUT: 시계 위젯, 아이콘 그리드, 독, 모션 패널 */
+*{box-sizing:border-box;margin:0;padding:0;min-width:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;overflow:hidden;touch-action:none;overscroll-behavior:none}
+body{font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#fff;background:linear-gradient(172deg,#2d2552 0%,#5d3f82 40%,#b56a9a 75%,#f1a7a0 100%)}
+#screen{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.widget{margin:22px 22px 4px}
+.clock{font-size:clamp(46px,12vw,78px);font-weight:200;letter-spacing:-2px;line-height:1}
+.date{opacity:.85;margin-top:6px;font-size:15px}
+.grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));align-content:start;gap:30px 4px;padding:28px 12px 10px;overflow:hidden}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.ibox{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;font-size:27px;box-shadow:0 4px 10px rgba(0,0,0,.25),inset 0 -3px 0 rgba(0,0,0,.12)}
+.ibox.hit,.dock.hit{animation:hit .55s}
+@keyframes hit{0%{transform:scale(1)}22%{transform:scale(1.12,.8)}50%{transform:scale(.94,1.08)}75%{transform:scale(1.03,.97)}100%{transform:scale(1)}}
+.dock{margin:0 12px calc(12px + env(safe-area-inset-bottom));padding:12px 8px;border-radius:30px;background:rgba(255,255,255,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;justify-content:space-around}
+.pet{position:fixed;left:0;top:0;z-index:10;touch-action:none;cursor:grab}
+.pet canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.shadow{position:fixed;left:0;top:0;z-index:8;height:8px;border-radius:50%;background:rgba(30,10,40,.35);pointer-events:none}
+.aura{position:fixed;left:0;top:0;z-index:9;display:none;pointer-events:none;border-radius:50% 50% 42% 42%;background:radial-gradient(ellipse at 50% 72%,rgba(255,235,245,.9) 0,rgba(255,110,165,.7) 30%,rgba(255,50,110,.3) 52%,transparent 70%);animation:flick .11s infinite alternate}
+@keyframes flick{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+#ball{position:fixed;left:0;top:0;z-index:9;display:none;image-rendering:pixelated;pointer-events:none}
+.fl{position:fixed;z-index:12;pointer-events:none;font-weight:900;font-size:18px;color:#fff;white-space:nowrap;transform:translate(-50%,0);
+text-shadow:2px 0 #2a1f3d,-2px 0 #2a1f3d,0 2px #2a1f3d,0 -2px #2a1f3d,2px 2px #2a1f3d;animation:up 1.2s ease-out forwards}
+.fl.boing{font-size:26px;color:#ffe45e;animation:boing 1.1s ease-out forwards}
+.fl.z{font-size:16px;color:#cfe3ff;animation:zz 1.8s ease-out forwards}
+@keyframes up{0%{opacity:0;transform:translate(-50%,8px) scale(.6)}15%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-46px)}}
+@keyframes boing{0%{opacity:0;transform:translate(-50%,0) scale(.3,1.6)}18%{opacity:1;transform:translate(-50%,-10px) scale(1.35,.75)}34%{transform:translate(-50%,-14px) scale(.85,1.2)}50%{transform:translate(-50%,-16px) scale(1.08,.94)}70%{opacity:1;transform:translate(-50%,-20px) scale(1)}100%{opacity:0;transform:translate(-50%,-40px)}}
+@keyframes zz{0%{opacity:0;transform:translate(-50%,0)}20%{opacity:1}100%{opacity:0;transform:translate(10px,-50px) scale(1.4)}}
+.bubble{position:fixed;left:0;top:0;z-index:12;display:none;pointer-events:none;background:#fff;color:#2a1f3d;font-size:14px;font-weight:800;padding:5px 10px;border:3px solid #2a1f3d;box-shadow:3px 3px 0 rgba(0,0,0,.25);white-space:nowrap}
+.crack{position:fixed;z-index:15;pointer-events:none;transition:opacity 1s}
+.shard{position:fixed;z-index:16;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(190,225,255,.75));box-shadow:0 0 2px rgba(30,20,60,.6)}
+.flash{position:fixed;inset:0;z-index:14;background:#fff;pointer-events:none}
+#menuBtn{position:fixed;right:14px;top:calc(16px + env(safe-area-inset-top));z-index:20;height:44px;padding:0 14px;border:3px solid #fff;background:#2a1f3d;color:#fff;font-weight:800;font-size:14px;box-shadow:3px 3px 0 rgba(0,0,0,.3)}
+#panel{position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;width:min(94vw,600px);background:rgba(34,24,56,.96);border:3px solid #fff;box-shadow:5px 5px 0 rgba(0,0,0,.3);padding:12px;display:none;flex-direction:column;gap:9px;touch-action:pan-y}
+#panel.on{display:flex}
+#panel h2{font-size:16px}
+.row{display:flex;gap:7px;flex-wrap:wrap}
+.row button{flex:1}
+button{font:inherit;min-height:44px;border:2px solid #fff;background:#5d3f82;color:#fff;font-weight:800;font-size:13px;padding:0 8px}
+button.on{background:#8a5a2b}button.off{background:#55506a;color:#cfc9e0}
+button:active{filter:brightness(1.3)}
+#moves{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-content:start;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+@media(max-width:420px){#moves{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#moves button{min-height:42px;font-size:12.5px;line-height:1.2}
+.hint{font-size:12px;opacity:.8;line-height:1.45}
+#intro{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(20,14,36,.72);padding:24px}
+#intro .card{background:#fff;color:#2a1f3d;border:3px solid #2a1f3d;box-shadow:6px 6px 0 rgba(0,0,0,.35);padding:20px;max-width:380px;line-height:1.55;font-size:15px}
+#intro h1{font-size:22px;margin-bottom:8px}#intro button{width:100%;margin-top:14px;background:#8a5a2b;font-size:16px}
+#intro ol{padding-left:20px;margin-top:8px;font-size:14px}
+</style></head><body>
+<div id="screen">
+  <div class="widget"><div class="clock" id="clock">12:00</div><div class="date" id="date"></div></div>
+  <div class="grid" id="grid"></div>
+  <div class="dock" id="dock"></div>
+</div>
+<canvas id="ball" width="8" height="8"></canvas>
+<button id="menuBtn">🎮 메뉴</button>
+<div id="panel">
+  <h2>시아·정우 펫 🏃‍♀️🥋</h2>
+  <div class="row" id="toggles"></div>
+  <div class="row" id="pickers"></div>
+  <div class="row"><button id="rand">🎲 랜덤 모션</button><button id="snd">소리 켜짐</button></div>
+  <!--SPICYBTN-->
+  <div class="row" id="sizes"></div>
+  <div id="moves"></div>
+  <p class="hint">톡: 인사 · 잡고 던지기: 띠용~ · 꾹 누르기: 이 메뉴 · 둘을 같이 켜두면 만났을 때 서로 반응해요.</p>
+</div>
+<div id="intro"><div class="card">
+  <h1>시아·정우 펫 🏃‍♀️🥋</h1>
+  <p>달리기 대장 시아와 태권도 3단 MC 정우가 이 화면을 뛰어다녀요. 잡아서 던지고, 톡 눌러보세요.</p>
+  <ol><li>아이폰: 사파리 아래 <b>공유 버튼 → 홈 화면에 추가</b></li><li>안드로이드 크롬: <b>⋮ → 홈 화면에 추가</b></li></ol>
+  <p style="font-size:13px;margin-top:8px;opacity:.75">홈 화면 아이콘으로 열면 앱처럼 전체 화면으로 떠요. 아이폰은 이 화면 안에서만 움직여요.</p>
+  <button id="go">시작하기</button>
+</div></div>
+<script>/* ===== 도트 스프라이트 (24x24) — 안드로이드 앱의 Sprite 코드를 그대로 옮김 ===== */
+function makePx(g){return (x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h)}}
+const LEGS={stand:[[6,0,3,3],[12,0,3,3]],walkA:[[5,0,3,3],[13,0,3,3]],walkB:[[7,0,3,3],[11,0,3,2]],runA:[[5,0,3,2],[13,0,3,3]],tuck:[[6,0,3,2],[12,0,3,2]],dangle:[[7,0,3,3],[11,0,3,3]],sit:[[5,0,4,2],[12,0,4,2]],kick:[[6,0,3,3],[13,-1,3,2]]};
+const SHOES={stand:[[5,3,4,1],[12,3,4,1]],walkA:[[4,3,4,1],[13,3,4,1]],walkB:[[7,3,4,1],[11,2,4,1]],runA:[[3,1,3,1],[13,3,4,1]],tuck:[[5,2,4,1],[12,2,4,1]],dangle:[[7,3,3,1],[11,3,3,1]],sit:[[3,0,2,2],[16,0,2,2]],kick:[[5,3,4,1],[16,-2,2,3]]};
+const SPARK='#ffe45e',TEAR='#5bc0ff',TONGUE='#ff7a9a',M_IN='#6b2230',BLUSH='#f29a9a',EYE='#1c1b24';
+
+function propAnchor(aR,by,bear){
+  if(bear)return{up:[17,by-5],out:[20,by+1],wave:[19,by-4],hip:[17,by+3],hold:[14,by+2],paw:[15,by-3]}[aR]||[17,by+5];
+  return{up:[16,by-5],out:[20,by+1],wave:[18,by-4],hip:[16,by+3],hold:[13,by+2]}[aR]||[16,by+5];
+}
+function drawProp(px,p,by,bear){
+  const pr=p.prop;if(!pr)return;const [ax,ay]=propAnchor(p.aR,by,bear);const dark='#22222c',white='#ffffff';
+  switch(pr){
+    case'phone':px(ax,ay-2,2,3,dark);px(ax,ay-2,2,2,'#6fd3ff');break;
+    case'coffee':px(ax-1,ay-2,3,3,white);px(ax-1,ay-2,3,1,'#6b3e1e');px(ax+2,ay-1,1,1,white);break;
+    case'book':px(ax-3,ay-2,5,4,'#3b6fd8');px(ax-2,ay-1,3,2,white);break;
+    case'mic':px(ax,ay-3,2,2,'#666677');px(ax,ay-1,1,2,dark);break;
+    case'drumstick':px(ax-1,ay-2,3,2,'#c8782e');px(ax+1,ay,1,1,'#a8581e');px(ax+2,ay+1,1,1,white);break;
+    case'icecream':px(ax,ay-3,2,2,'#ffb6c8');px(ax,ay-1,2,1,'#d9a24a');break;
+    case'balloon':px(ax,ay-6,1,6,'#dddddd');px(ax-1,ay-9,3,3,'#ff4f7a');px(ax-1,ay-9,1,1,'#ffc0d0');break;
+    case'camera':px(ax-2,ay-2,4,3,'#333344');px(ax-1,ay-1,2,1,'#6fd3ff');px(ax+1,ay-3,1,1,'#333344');break;
+    case'flower':px(ax,ay-1,1,3,'#3a9a4a');px(ax-1,ay-3,3,2,'#ff6f96');px(ax,ay-3,1,1,SPARK);break;
+    case'heart':{const h='#ff4f7a';px(ax-2,ay-4,1,1,h);px(ax,ay-4,1,1,h);px(ax-2,ay-3,3,1,h);px(ax-1,ay-2,1,1,h);break}
+    case'dumbbell':px(0,by-6,22,1,'#777788');px(bear?-1:0,by-8,2,4,'#333344');px(20,by-8,2,4,'#333344');break;
+    case'dumbbellDown':px(1,by+5,20,1,'#777788');px(0,by+3,2,4,'#333344');px(19,by+3,2,4,'#333344');break;
+    case'guitar':px(9,by+2,6,4,'#b5651d');px(10,by+1,4,1,'#b5651d');px(11,by+3,2,2,'#3a2410');px(15,by+2,5,1,'#5a3a1e');px(20,by+1,1,2,'#3a2410');break;
+    case'laptop':px(4,19,12,1,'#bfbfc8');px(5,15,10,4,'#3a3a46');px(6,16,8,2,'#6fd3ff');break;
+    case'honey':px(ax-2,ay-2,4,3,'#d9a24a');px(ax-2,ay-3,4,1,'#f5c518');px(ax-1,ay-1,2,1,'#fff1b0');px(ax+1,ay+1,1,1,'#f5c518');break;
+    case'salmon':px(ax-3,ay-1,6,2,'#f08a6a');px(ax+3,ay-2,1,4,'#e07050');px(ax-3,ay-1,1,1,dark);px(ax-1,ay,3,1,'#ffc0a8');break;
+    case'berry':px(ax-1,ay-2,2,2,'#d93a4e');px(ax,ay-3,1,1,'#3a9a4a');px(ax-1,ay-2,1,1,'#ff8a9a');break;
+    case'snowball':px(ax-1,ay-2,3,3,'#f4f8ff');px(ax+1,ay,1,1,'#cfe0f5');break;
+    case'lunchbox':px(ax-3,ay-1,6,3,'#e8312a');px(ax-3,ay-1,6,1,'#ffb0a0');break;
+    case'cupramen':px(ax-1,ay-3,3,3,white);px(ax-1,ay-2,3,1,'#e8312a');px(ax-1,ay-3,3,1,'#f5c518');break;
+    case'pillow':px(10,18,8,3,white);px(11,19,6,1,'#dde6f5');break;
+  }
+}
+
+/* ---------- 진행해줘 부장님 ---------- */
+const PC={hair:'#1a1a20',hairHi:'#3a3a46',skin:'#f1c6a0',skinSh:'#d49c78',lid:'#5a3a30',mouth:'#9a5040',shirt:'#f0a38a',shirtSh:'#d4826b',shirtHi:'#fbc3ae',pants:'#2b3d6b',shoe:'#f4f4f4',pen:'#3b6fd8',penTip:'#e8e8e8',penCap:'#22222c',
+ feather:'#f7ecd6',featherSh:'#e0cba6',featherHi:'#fffaf0',comb:'#e8312a',beak:'#f5c518',beakSh:'#d99a0b',foot:'#f2b705',claw:'#6b4a2b',chLid:'#b08a6a',box:'#d93a2e',boxIn:'#fff6ee',fried:'#a8581e',fried2:'#d88a34'};
+function drawPink(g,p,form,now){
+  const px=makePx(g);g.save();g.translate(2,0);const by=p.by,ch=form==='chicken';
+  // legs
+  const pc=ch?PC.foot:PC.pants,sc=ch?PC.foot:PC.shoe;
+  (LEGS[p.legs]||LEGS.stand).forEach(r=>px(r[0]+(ch?1:0),p.ly+r[1],ch?1:r[2],r[3],pc));
+  (SHOES[p.legs]||SHOES.stand).forEach(r=>{px(r[0],p.ly+r[1],r[2],r[3],sc);if(ch)px(r[0]+r[2]-1,p.ly+r[1]+r[3]-1,1,1,PC.claw)});
+  if(ch&&p.legs!=='sit'){px(5,p.ly,11,1,PC.feather);px(6,p.ly+1,9,1,PC.featherSh)}
+  if(ch){px(1,by+1,4,4,PC.feather);px(0,by-1,2,3,PC.featherHi);px(2,by,2,2,PC.featherHi);px(1,by+4,3,1,PC.featherSh)}
+  px(5,by,11,6,PC.shirt);px(5,by+5,11,1,PC.shirtSh);px(8,by,5,1,PC.shirtSh);
+  for(let r=1;r<5;r++){px(r%2?7:6,by+r,1,1,PC.shirtHi);px(10,by+r,1,1,r%2?PC.shirtHi:PC.shirtSh);px(r%2?13:14,by+r,1,1,PC.shirtHi)}
+  const hand=ch?PC.featherHi:PC.skin;
+  for(const side of[-1,1]){const t=side<0?p.aL:p.aR;const R=(x,y,w,h,c)=>side<0?px(x,y,w,h,c):px(21-x-w,y,w,h,c);
+    if(t==='down'){R(3,by+1,2,4,PC.shirt);R(3,by+5,2,1,hand)}else if(t==='up'){R(3,by-4,2,5,PC.shirt);R(3,by-5,2,1,hand)}
+    else if(t==='out'){R(1,by+1,3,2,PC.shirt);R(0,by+1,1,2,hand)}else if(t==='wave'){R(2,by-3,2,4,PC.shirt);R(1,by-4,2,1,hand)}
+    else if(t==='hip'){R(3,by+1,2,2,PC.shirt);R(4,by+3,1,1,hand)}else if(t==='hold'){R(3,by+1,2,2,PC.shirt);R(4,by+3,3,1,PC.shirt);R(7,by+2,1,1,hand)}}
+  const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);const l=p.look<0?0:1;
+  if(ch){
+    h(8,0,2,1,PC.comb);h(11,0,2,1,PC.comb);h(7,1,8,1,PC.comb);h(14,0,1,1,PC.comb);
+    h(4,2,13,3,PC.hair);h(8,2,4,1,PC.hairHi);h(3,3,1,2,PC.hair);h(17,3,1,2,PC.hair);
+    h(4,5,13,6,PC.feather);h(5,11,11,1,PC.feather);h(3,7,1,3,PC.featherHi);h(17,7,1,3,PC.featherHi);h(4,10,1,1,PC.featherSh);h(16,10,1,1,PC.featherSh);
+    h(4,5,2,1,PC.hair);h(15,5,2,1,PC.hair);h(7,6,2,1,PC.hair);h(12,6,3,1,PC.hair);
+    if(p.eyes==='closed'){h(7,7,2,1,PC.lid);h(12,7,2,1,PC.lid)}
+    else{const e=p.eyes==='sparkle'?SPARK:EYE;h(7,7,2,1,PC.chLid);h(12,7,2,1,PC.chLid);h(7+l,8,1,1,e);if(p.eyes==='wink')h(12,8,2,1,PC.lid);else h(12+l,8,1,1,e);
+      if(p.eyes==='wide'){h(7+l,7,1,1,EYE);h(12+l,7,1,1,EYE)}if(p.eyes==='tear'){h(7+l,9,1,2,TEAR);h(12+l,9,1,2,TEAR)}}
+    h(9,8,4,1,PC.beak);h(13,8,1,1,PC.beakSh);const op=['open','o','grin','tongue'].includes(p.mouth);
+    if(op){h(10,9,3,1,M_IN);h(10,10,3,1,PC.beakSh)}else h(10,9,3,1,PC.beakSh);
+    h(10,op?11:10,2,2,PC.comb);h(12,10,1,1,PC.comb);h(6,9,2,1,BLUSH);h(14,9,2,1,BLUSH);
+  }else{
+    const pw=form==='power',hr=pw?(Math.floor(now/90)%2?'#ff3d75':'#ff6f96'):PC.hair,hh=pw?'#ffe0ea':PC.hairHi;
+    h(6,1,9,1,hr);h(4,2,13,3,hr);h(9,2,5,1,hh);h(7,2,1,2,hh);
+    if(pw){[5,8,11,14].forEach(sx=>h(sx,0,1,1,hr));h(3,2,1,2,hr);h(17,2,1,2,hr);h(2,1,1,1,hr);h(18,1,1,1,hr)}
+    h(5,5,11,6,PC.skin);h(6,11,9,1,PC.skin);h(5,10,1,1,PC.skinSh);h(15,10,1,1,PC.skinSh);
+    h(4,5,1,2,hr);h(16,5,1,1,hr);h(8,5,6,1,hr);h(14,5,1,1,hh);
+    h(4,7,1,2,PC.skin);h(16,7,1,2,PC.skin);h(4,8,1,1,PC.skinSh);h(16,8,1,1,PC.skinSh);
+    h(7,6,2,1,PC.hair);h(12,6,2,1,PC.hair);if(pw){h(9,7,1,1,PC.hair);h(11,7,1,1,PC.hair)}
+    if(p.eyes==='closed'){h(7,7,2,1,PC.lid);h(12,7,2,1,PC.lid)}
+    else if(p.eyes==='wink'){h(7+l,7,1,1,EYE);h(12,7,2,1,PC.lid)}
+    else if(p.eyes==='sparkle'){h(7+l,7,1,1,SPARK);h(12+l,7,1,1,SPARK);h(7+l,8,1,1,EYE);h(12+l,8,1,1,EYE)}
+    else{h(7+l,7,1,1,EYE);h(12+l,7,1,1,EYE);if(p.eyes==='wide'){h(7+l,8,1,1,EYE);h(12+l,8,1,1,EYE);h(7,5,2,1,PC.hair);h(12,5,2,1,PC.hair)}
+      if(p.eyes==='angry'){h(9,7,1,1,PC.hair);h(11,7,1,1,PC.hair)}}
+    if(p.eyes==='tear'){h(7+l,8,1,2,TEAR);h(12+l,8,1,2,TEAR)}
+    h(10,8,1,2,PC.skinSh);
+    switch(p.mouth){case'grin':h(8,9,5,2,M_IN);h(9,9,3,1,'#fff');break;case'tongue':h(9,9,3,1,M_IN);h(10,10,1,1,TONGUE);break;
+      case'smile':h(9,10,3,1,PC.mouth);h(8,9,1,1,PC.mouth);h(12,9,1,1,PC.mouth);break;case'open':h(9,9,3,2,M_IN);break;case'o':h(10,9,1,2,M_IN);break;default:h(9,10,3,1,PC.mouth)}
+    if(p.blush){h(6,9,1,1,BLUSH);h(14,9,1,1,BLUSH)}
+    if(p.prop==='headphones'){h(5,1,11,1,'#333344');h(3,6,2,3,'#ff4f7a');h(16,6,2,3,'#ff4f7a')}
+  }
+  if(ch&&p.box){px(10,by+1,9,5,PC.box);px(13,by,3,1,PC.box);px(14,by,1,1,PC.boxIn);px(11,by+2,7,3,PC.boxIn);
+    px(12,by+3,2,1,PC.fried);px(14,by+3,1,1,PC.fried2);px(15,by+3,2,1,PC.fried);px(13,by+4,3,1,PC.fried2);px(11,by+2,1,1,PC.box);px(9,by+3,2,2,PC.featherHi);px(18,by+3,1,2,PC.featherHi)}
+  if(p.pen==='up'){px(16,by-9,1,4,PC.pen);px(16,by-10,1,1,PC.penTip);px(16,by-6,1,1,PC.penCap)}
+  else if(p.pen==='out'){px(20,by-3,1,4,PC.pen);px(20,by-4,1,1,PC.penTip)}
+  else if(p.pen==='down'){px(20,by+3,1,1,PC.pen);px(21,by+4,1,1,PC.pen);px(21,by+5,1,1,PC.penTip)}
+  else if(p.pen==='stab'){px(20,by+1,1,1,PC.penTip);px(19,by+1,1,1,PC.pen)}
+  if(p.prop!=='headphones')drawProp(px,p,by,false);
+  if(p.pot){px(5,16,11,1,'#f6d978');px(6,16,9,1,'#d8642c');px(7,16,1,1,'#fbe9a0');px(10,16,2,1,'#fbe9a0');px(13,16,1,1,'#fbe9a0');
+    px(5,17,11,4,'#e0b54a');px(5,20,11,1,'#b88a2a');px(7,18,1,1,'#f6d978');px(11,19,1,1,'#f6d978');px(3,17,2,1,'#b88a2a');px(16,17,2,1,'#b88a2a')}
+  if(p.eat){px(10,by-1,1,3,'#fbe9a0');px(16,by+1,2,2,PC.shirt);px(14,by-1,2,2,PC.shirt);px(12,by-2,2,1,hand);px(11,by-1,1,3,'#7a4a24')}
+  g.restore();
+}
+
+/* ---------- 여유곰 ---------- */
+const BC={fur:'#b9783f',furSh:'#9a5f2e',earIn:'#e3b07a',muz:'#f1ddb8',nose:'#3a2420',mouth:'#7a4a3a',hair:'#1a1a20',hairHi:'#3a3a46',glass:'#2a2a30',lens:'#e3f0fb',lid:'#6a4020',
+ jacket:'#2c2c34',jLn:'#33333c',jHi:'#3e3e4a',zip:'#5c5c6a',pants:'#3a3f58',shoe:'#4a3426',pad:'#f2a0a8'};
+function drawBear(g,p){
+  const px=makePx(g);g.save();g.translate(2,0);const by=p.by;
+  if(p.prop==='bike'){const f='#3b6fd8',d='#22222c';for(const cx of[3,16]){px(cx-2,17,5,1,d);px(cx-2,21,5,1,d);px(cx-3,18,1,3,d);px(cx+2,18,1,3,d);px(cx,19,1,1,'#999')}
+    px(3,19,13,1,f);px(9,16,1,3,f);px(15,14,1,5,f);px(14,13,3,1,d);px(7,16,4,1,d)}
+  (LEGS[p.legs]||LEGS.stand).forEach(r=>px(r[0],p.ly+r[1],r[2],r[3],BC.pants));
+  (SHOES[p.legs]||SHOES.stand).forEach(r=>px(r[0],p.ly+r[1],r[2],r[3],BC.shoe));
+  px(4,by,13,6,BC.jacket);px(4,by+2,13,1,BC.jLn);px(4,by+4,13,1,BC.jLn);px(6,by,9,1,BC.jHi);px(8,by,5,1,BC.fur);px(10,by,1,6,BC.zip);px(6,by+2,1,2,BC.zip);px(14,by+2,1,2,BC.zip);
+  for(const side of[-1,1]){const t=side<0?p.aL:p.aR;const R=(x,y,w,h,c)=>side<0?px(x,y,w,h,c):px(21-x-w,y,w,h,c);
+    switch(t){case'down':R(2,by+1,2,4,BC.jacket);R(2,by+2,1,2,BC.jLn);break;case'paws':R(2,by+1,2,4,BC.jacket);R(2,by+5,2,1,BC.fur);break;
+      case'up':R(2,by-4,2,5,BC.jacket);R(2,by-5,2,1,BC.fur);break;case'out':R(0,by+1,3,2,BC.jacket);R(-1,by+1,1,2,BC.fur);break;
+      case'wave':R(1,by-3,2,4,BC.jacket);R(0,by-4,2,1,BC.fur);R(0,by-4,1,1,BC.pad);break;case'hip':R(2,by+1,2,2,BC.jacket);R(3,by+3,1,1,BC.fur);break;
+      case'hold':R(2,by+1,2,2,BC.jacket);R(3,by+3,3,1,BC.jacket);R(6,by+2,1,1,BC.fur);break;case'paw':R(2,by-1,2,2,BC.jacket);R(3,by-2,1,1,BC.jacket);break}}
+  const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);const l=p.look<0?0:1;
+  h(3,1,4,3,BC.fur);h(4,0,2,1,BC.fur);h(4,1,2,2,BC.earIn);h(14,1,4,3,BC.fur);h(15,0,2,1,BC.fur);h(15,1,2,2,BC.earIn);
+  h(5,3,11,1,BC.fur);h(4,4,13,7,BC.fur);h(5,11,11,1,BC.fur);h(3,5,1,5,BC.fur);h(17,5,1,5,BC.fur);
+  h(3,9,1,1,BC.furSh);h(17,9,1,1,BC.furSh);h(4,10,1,1,BC.furSh);h(16,10,1,1,BC.furSh);
+  h(7,0,1,1,BC.hair);h(10,0,1,1,BC.hair);h(13,0,1,1,BC.hair);h(6,1,9,2,BC.hair);h(6,3,2,1,BC.hair);h(9,3,3,1,BC.hair);h(13,3,2,1,BC.hair);h(8,1,3,1,BC.hairHi);h(10,4,1,1,BC.hair);
+  h(8,8,5,1,BC.muz);h(7,9,7,2,BC.muz);h(8,11,5,1,BC.muz);h(9,8,3,1,BC.nose);h(10,9,1,1,BC.nose);
+  for(const gx of[6,11]){h(gx+1,5,2,1,BC.glass);h(gx+1,7,2,1,BC.glass);h(gx,6,1,1,BC.glass);h(gx+3,6,1,1,BC.glass);h(gx+1,6,2,1,BC.lens)}h(10,6,1,1,BC.glass);
+  switch(p.eyes){case'closed':h(7,6,2,1,BC.lid);h(12,6,2,1,BC.lid);break;case'wink':h(7+l,6,1,1,EYE);h(12,6,2,1,BC.lid);break;
+    case'sparkle':h(7+l,6,1,1,SPARK);h(12+l,6,1,1,SPARK);break;case'angry':h(7+l,6,1,1,EYE);h(12+l,6,1,1,EYE);h(8,4,2,1,BC.hair);h(11,4,2,1,BC.hair);break;
+    case'wide':h(7,6,2,1,EYE);h(12,6,2,1,EYE);break;default:h(7+l,6,1,1,EYE);h(12+l,6,1,1,EYE)}
+  if(p.eyes==='tear'){h(7+l,8,1,2,TEAR);h(13,8,1,2,TEAR)}
+  switch(p.mouth){case'smile':h(8,9,1,1,BC.mouth);h(12,9,1,1,BC.mouth);h(9,10,3,1,BC.mouth);break;case'open':h(9,10,3,2,M_IN);break;case'o':h(10,10,1,2,M_IN);break;
+    case'grin':h(8,10,5,2,M_IN);h(9,10,3,1,'#fff');break;case'tongue':h(9,10,3,1,M_IN);h(10,11,1,1,TONGUE);break;default:h(9,10,1,1,BC.mouth);h(11,10,1,1,BC.mouth)}
+  if(p.blush){h(5,9,2,1,BLUSH);h(14,9,2,1,BLUSH)}
+  if(p.prop==='santa'){h(5,0,11,2,'#e8312a');h(4,2,13,1,'#fff');h(15,-1,2,2,'#fff')}
+  if(p.prop==='headphones'){h(5,0,11,1,'#333344');h(3,5,2,3,'#ffb000');h(16,5,2,3,'#ffb000')}
+  if(p.aR==='paw'){px(15,by-3,2,2,BC.fur);px(16,by-3,1,1,BC.pad)}
+  if(!['santa','headphones','bike'].includes(p.prop))drawProp(px,p,by,true);
+  g.restore();
+}
+/* ===== 수아네 스프라이트 — 안드로이드 FamilySprites.kt 를 옮김 ===== */
+function famLegs(px,t,ly,pants,shoe){(LEGS[t]||LEGS.stand).forEach(r=>px(r[0],ly+r[1],r[2],r[3],pants));(SHOES[t]||SHOES.stand).forEach(r=>px(r[0],ly+r[1],r[2],r[3],shoe))}
+function famArm(px,side,t,by,sl,hd){const R=(x,y,w,h,c)=>side<0?px(x,y,w,h,c):px(21-x-w,y,w,h,c);
+ switch(t){case'down':R(3,by+1,2,4,sl);R(3,by+5,2,1,hd);break;case'up':R(3,by-4,2,5,sl);R(3,by-5,2,1,hd);break;case'out':R(1,by+1,3,2,sl);R(0,by+1,1,2,hd);break;
+  case'wave':R(2,by-3,2,4,sl);R(1,by-4,2,1,hd);break;case'hip':R(3,by+1,2,2,sl);R(4,by+3,1,1,hd);break;case'hold':R(3,by+1,2,2,sl);R(4,by+3,3,1,sl);R(7,by+2,1,1,hd);break;
+  case'cross':R(3,by+1,2,2,sl);R(5,by+2,5,1,sl);R(9,by+2,1,1,hd);break}}
+function famFace(px,p,lid,mc,nc){const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c),l=p.look<0?0:1,ey=7;
+ switch(p.eyes){case'closed':h(7,ey,2,1,lid);h(12,ey,2,1,lid);break;case'wink':h(7+l,ey,1,1,EYE);h(12,ey,2,1,lid);break;
+  case'sparkle':h(7+l,ey,1,1,SPARK);h(12+l,ey,1,1,SPARK);h(7+l,ey+1,1,1,EYE);h(12+l,ey+1,1,1,EYE);break;
+  case'angry':h(7+l,ey,1,1,EYE);h(12+l,ey,1,1,EYE);h(8,ey-1,2,1,lid);h(11,ey-1,2,1,lid);break;case'wide':h(7+l,ey,1,2,EYE);h(12+l,ey,1,2,EYE);break;
+  case'half':h(7,ey,2,1,lid);h(12,ey,2,1,lid);h(7+l,ey+1,1,1,EYE);h(12+l,ey+1,1,1,EYE);break;default:h(7+l,ey,1,1,EYE);h(12+l,ey,1,1,EYE)}
+ if(p.eyes==='tear'){h(7+l,ey+1,1,2,TEAR);h(12+l,ey+1,1,2,TEAR)}h(10,8,1,1,nc);
+ switch(p.mouth){case'smile':h(9,10,3,1,mc);h(8,9,1,1,mc);h(12,9,1,1,mc);break;case'open':h(9,9,3,2,M_IN);break;case'o':h(10,9,1,2,M_IN);break;
+  case'grin':h(8,9,5,2,M_IN);h(9,9,3,1,'#fff');break;case'tongue':h(9,9,3,1,M_IN);h(10,10,1,1,TONGUE);break;case'pout':h(9,10,3,1,mc);h(10,9,1,1,mc);break;default:h(9,10,3,1,mc)}
+ if(p.blush){h(6,9,2,1,'#f7a0a0');h(13,9,2,1,'#f7a0a0')}}
+function famProp(px,p,by){const pr=p.prop;if(!pr)return;const a={up:[16,by-5],out:[20,by+1],wave:[18,by-4],hip:[16,by+3],hold:[13,by+2],cross:[12,by+2]}[p.aR]||[16,by+5];const ax=a[0],ay=a[1],d='#22222c',w='#fff',hx=p.hx,hy=p.hy;
+ switch(pr){
+  case'phone':px(ax,ay-2,2,3,d);px(ax,ay-2,2,2,'#6fd3ff');break;case'roblox':px(ax-2,ay-3,4,3,d);px(ax-1,ay-2,2,1,'#ff4a4a');break;
+  case'coffee':px(ax-1,ay-2,3,3,w);px(ax-1,ay-2,3,1,'#6b3e1e');px(ax+2,ay-1,1,1,w);break;case'cola':px(ax,ay-3,2,3,'#d8343a');px(ax,ay-2,2,1,w);px(ax,ay-3,2,1,'#bbb');break;
+  case'chips':px(ax-2,ay-3,4,4,'#ffcc33');px(ax-2,ay-2,4,1,'#e8312a');px(ax-1,ay-4,2,1,'#ffcc33');break;
+  case'malatang':px(ax-3,ay-1,6,2,w);px(ax-2,ay-2,4,1,'#e0402a');px(ax-1,ay-2,1,1,'#3a9a4a');px(ax-2,ay+1,4,1,'#ddd');break;
+  case'card':px(ax-1,ay-2,3,2,'#3b6fd8');px(ax-1,ay-1,3,1,'#ffd54a');break;case'lollipop':px(ax,ay-1,1,3,w);px(ax-1,ay-4,3,3,'#ff6fb0');px(ax,ay-3,1,1,'#ffd0e8');break;
+  case'jelly':px(ax-1,ay-2,1,2,'#ff4a4a');px(ax,ay-2,1,2,'#4ad06a');px(ax+1,ay-2,1,2,'#ffcc33');break;case'milk':px(ax-1,ay-3,3,4,'#8b5a2b');px(ax-1,ay-3,3,1,w);px(ax,ay-4,1,1,w);break;
+  case'gimbap':px(ax-1,ay-3,3,3,w);px(ax,ay-4,1,1,w);px(ax-1,ay-1,3,1,d);break;case'icecream':px(ax,ay-3,2,2,'#ffb6c8');px(ax,ay-1,2,1,'#d9a24a');break;
+  case'cupramen':px(ax-1,ay-3,3,3,w);px(ax-1,ay-2,3,1,'#e8312a');px(ax-1,ay-3,3,1,'#f5c518');break;case'wand':px(ax,ay-4,1,4,'#ffd54a');px(ax-1,ay-5,3,1,SPARK);px(ax,ay-6,1,3,SPARK);break;
+  case'bubble':px(ax,ay-2,1,3,'#ff8fd0');px(ax-1,ay-5,3,1,'#ff8fd0');px(ax-1,ay-4,1,1,'#ff8fd0');px(ax+1,ay-4,1,1,'#ff8fd0');break;
+  case'crayon':px(ax,ay-3,1,3,'#ff6f96');px(ax,ay-4,1,1,'#d04070');px(4,19,12,2,w);px(6,19,3,1,'#ffcc33');px(11,20,3,1,'#5b8cff');break;
+  case'toothbrush':px(ax,ay-3,1,4,'#5bc0ff');px(ax-1,ay-4,2,1,w);break;case'book':px(ax-3,ay-2,5,4,'#ff8fb0');px(ax-2,ay-1,3,2,w);break;
+  case'beer':px(ax-1,ay-3,3,4,'#f0b42a');px(ax-1,ay-4,3,1,w);px(ax+2,ay-2,1,2,'#ddd');break;case'soju':px(ax,ay-5,1,2,'#3fae6a');px(ax-1,ay-3,2,4,'#4fc07a');px(ax-1,ay-2,2,1,w);break;
+  case'shot':px(ax,ay-2,2,2,'#e8f4ff');px(ax,ay-1,2,1,'#cfe6ff');break;case'wine':px(ax-1,ay-4,3,2,'#a01830');px(ax,ay-2,1,2,'#e8e8f0');px(ax-1,ay,3,1,'#e8e8f0');break;
+  case'makgeolli':px(ax-2,ay-2,4,2,'#f4f0e6');px(ax-1,ay-2,2,1,'#e8e0c8');break;
+  case'pot':px(4,by+4,13,2,'#f2a0b0');px(5,by+3,11,1,'#2a2a30');px(7,by+3,2,1,w);px(11,by+3,2,1,'#e0a060');px(2,by+4,2,1,'#e07090');px(17,by+4,2,1,'#e07090');break;
+  case'parcel':px(ax-3,ay-3,6,4,'#c8935a');px(ax-3,ay-2,6,1,'#e8c08a');break;case'mirror':px(ax-1,ay-3,3,3,'#cfe6ff');px(ax,ay,1,2,'#ff8fb0');break;
+  case'keys':px(ax,ay-1,2,2,'#c8c8d0');px(ax+1,ay+1,1,1,'#ffcc33');break;case'laptop':px(4,19,12,1,'#bfbfc8');px(5,15,10,4,'#3a3a46');px(6,16,8,2,'#6fd3ff');break;
+  case'vacuum':px(ax,ay-1,1,7,'#888899');px(ax-1,20,4,2,'#e8312a');break;case'umbrella':px(ax,ay-7,1,8,d);px(ax-4,ay-9,9,2,'#ffcc33');px(ax-3,ay-10,7,1,'#ffcc33');break;
+  case'flower':px(ax,ay-1,1,3,'#3a9a4a');px(ax-1,ay-3,3,2,'#ff6f96');px(ax,ay-3,1,1,SPARK);break;
+  case'heart':{const c='#ff4f7a';px(ax-2,ay-4,1,1,c);px(ax,ay-4,1,1,c);px(ax-2,ay-3,3,1,c);px(ax-1,ay-2,1,1,c);break}
+  case'witch':px(4+hx,2+hy,13,1,d);px(7+hx,hy,7,2,d);px(9+hx,hy-1,3,1,d);px(7+hx,1+hy,7,1,'#ff8a2a');break;
+  case'catears':px(5+hx,hy,2,2,'#ffe0ec');px(14+hx,hy,2,2,'#ffe0ec');px(5+hx,1+hy,1,1,'#ff9ac0');px(15+hx,1+hy,1,1,'#ff9ac0');px(6+hx,2+hy,9,1,w);break;
+  case'backpack':px(2,by+1,3,5,'#ff8fb0');px(2,by+2,3,1,'#ffd0e0');break;
+  case'basketball':px(ax-1,ay-3,3,3,'#e8792a');px(ax,ay-3,1,3,'#5a2a10');px(ax-1,ay-2,3,1,'#5a2a10');break;
+  case'blackball':px(ax-1,ay-3,3,3,'#2a2a2e');px(ax,ay-3,1,1,'#55555c');break;
+  case'ballDown':px(ax-1,19,3,3,'#e8792a');px(ax,19,1,3,'#5a2a10');break;
+  case'medal':px(9,by,1,2,'#e8312a');px(11,by,1,2,'#2a52be');px(9,by+2,3,2,'#ffcc33');px(10,by+2,1,1,'#fff2a0');break;
+  case'trophy':px(ax-1,ay-4,3,2,'#ffcc33');px(ax,ay-2,1,1,'#e0a020');px(ax-1,ay-1,3,1,'#e0a020');break;
+  case'bib':px(7,by+1,7,3,w);px(8,by+2,1,1,'#e8312a');px(10,by+2,1,1,'#e8312a');px(12,by+2,1,1,'#e8312a');break;
+  case'goggles':px(6+hx,7+hy,3,1,'#2ad0ff');px(12+hx,7+hy,3,1,'#2ad0ff');px(4+hx,7+hy,2,1,d);px(15+hx,7+hy,2,1,d);px(9+hx,7+hy,3,1,d);break;
+  case'swimcap':px(5+hx,1+hy,11,4,'#2a52be');px(7+hx,2+hy,3,1,'#5a82ee');break;
+  case'sunglasses':px(6+hx,7+hy,4,2,d);px(11+hx,7+hy,4,2,d);px(10+hx,7+hy,1,1,d);px(7+hx,7+hy,1,1,'#6a6a80');px(12+hx,7+hy,1,1,'#6a6a80');break;
+  case'mic':px(ax,ay-3,2,2,'#777788');px(ax,ay-1,1,2,d);break;
+  case'beef':px(4,19,13,1,'#555560');px(5,20,1,2,'#555560');px(15,20,1,2,'#555560');px(6,18,3,1,'#c0404a');px(11,18,3,1,'#a03040');px(7,18,1,1,'#f0c0c0');break;
+  case'board':px(ax-1,ay-5,2,6,'#d8b07a');px(ax-1,ay-3,2,1,'#b08050');break;
+  case'water':px(ax,ay-4,2,4,'#5bc0ff');px(ax,ay-5,2,1,w);break;
+  case'stopwatch':px(ax-1,ay-2,3,3,'#cfcfd8');px(ax,ay-1,1,1,d);px(ax,ay-3,1,1,'#cfcfd8');break;
+  case'flag':px(ax,ay-6,1,7,'#8a6a4a');px(ax+1,ay-6,4,3,w);px(ax+2,ay-5,1,1,'#d8343a');px(ax+3,ay-5,1,1,'#2a52be');break;
+  case'baton':px(ax,ay-3,1,4,'#ffcc33');break}}
+
+const SU={hair:'#2a1d1a',hairHi:'#4a3530',skin:'#f6d2b4',skinSh:'#e0b090',clip1:'#ff7ab8',clip2:'#b07aff',shirt:'#1f1f26',shirtHi:'#34343e',silver:'#d0d0d8',pants:'#7a7a86',shoe:'#ff8fb0',lid:'#5a3a30',mouth:'#c0605a'};
+function drawSua(g,p){const px=makePx(g);g.save();g.translate(2,0);const by=p.by;
+ if(p.prop==='backpack')famProp(px,p,by);famLegs(px,p.legs,p.ly,SU.pants,SU.shoe);
+ px(5,by,11,6,SU.shirt);px(5,by+5,11,1,SU.shirtHi);px(9,by,3,1,SU.skin);px(9,by+1,1,1,SU.silver);px(11,by+1,1,1,SU.silver);px(10,by+2,1,2,SU.silver);px(6,by+3,1,1,SU.shirtHi);px(7,by+3,1,1,'#ccc');
+ famArm(px,-1,p.aL,by,SU.shirt,SU.skin);famArm(px,1,p.aR,by,SU.shirt,SU.skin);
+ const fx=(p.aR==='down'||p.aR==='hip')?15:13;px(fx,by+2,2,2,'#fff');px(fx,by+2,1,1,'#d8343a');px(fx+1,by+3,1,1,'#2a52be');
+ const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);
+ h(9,0,3,1,SU.hair);h(8,1,5,1,SU.hair);h(8,1,1,1,SU.clip1);h(12,1,1,1,SU.clip2);h(9,0,1,1,SU.clip1);
+ h(5,2,11,2,SU.hair);h(4,3,1,3,SU.hair);h(16,3,1,3,SU.hair);h(7,2,3,1,SU.hairHi);
+ h(5,4,11,7,SU.skin);h(6,11,9,1,SU.skin);h(4,6,1,4,SU.skin);h(16,6,1,4,SU.skin);
+ h(5,4,2,1,SU.hair);h(8,4,1,1,SU.hair);h(13,4,3,1,SU.hair);h(5,5,1,1,SU.hair);
+ h(3,5,1,7,SU.hair);h(17,5,1,7,SU.hair);h(4,10,1,2,SU.hair);h(16,10,1,2,SU.hair);h(5,9,1,1,'#f7a0a0');h(15,9,1,1,'#f7a0a0');
+ famFace(px,p,SU.lid,SU.mouth,SU.skinSh);if(p.prop!=='backpack')famProp(px,p,by);g.restore()}
+
+const MO={hair:'#1c1618',hairHi:'#3a2c2a',skin:'#f3d0b5',skinSh:'#dcae90',jacket:'#a8b4c4',jSh:'#8c98aa',jLn:'#bcc7d6',tee:'#f4f2f0',pants:'#2a2a30',shoe:'#f4f4f4',lid:'#4a3a36',mouth:'#c06060'};
+function drawMom(g,p){const px=makePx(g);g.save();g.translate(2,0);const by=p.by;
+ famLegs(px,p.legs,p.ly,MO.pants,MO.shoe);
+ px(5,by,11,6,MO.jacket);px(9,by,3,2,MO.tee);px(10,by+2,1,1,MO.tee);px(7,by+1,1,4,MO.jLn);px(13,by+1,1,4,MO.jLn);px(11,by+3,3,1,MO.jSh);px(8,by+2,1,1,'#556070');px(5,by+5,11,1,MO.jSh);
+ famArm(px,-1,p.aL,by,MO.jacket,MO.skin);famArm(px,1,p.aR,by,MO.jacket,MO.skin);
+ const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);
+ h(6,1,9,1,MO.hair);h(5,2,11,3,MO.hair);h(10,2,1,1,MO.hairHi);h(7,2,2,1,MO.hairHi);h(12,2,2,1,MO.hairHi);
+ h(6,5,9,6,MO.skin);h(7,11,7,1,MO.skin);h(6,10,1,1,MO.skinSh);h(14,10,1,1,MO.skinSh);
+ h(5,5,1,6,MO.hair);h(15,5,1,6,MO.hair);h(6,5,2,1,MO.hair);h(13,5,2,1,MO.hair);h(7,6,2,1,MO.lid);h(12,6,2,1,MO.lid);
+ famFace(px,p,MO.lid,MO.mouth,MO.skinSh);
+ if(!p.lying){h(4,6,1,10,MO.hair);h(16,6,1,10,MO.hair);h(5,11,1,5,MO.hair);h(15,11,1,5,MO.hair)}
+ famProp(px,p,by);g.restore()}
+/* ===== 시아·정우 스프라이트 — 안드로이드 KidsSprites.kt 를 옮김 ===== */
+const SI={hair:'#2a1c18',hairHi:'#4a342c',skin:'#f4cfb0',skinSh:'#ddae8c',hoodie:'#ece8e0',vest:'#1e1e24',vestHi:'#34343c',bag:'#111114',jeans:'#3b5a8a',shoe:'#f2f2f2',lid:'#5a3a30',mouth:'#c0605a'};
+function drawSia(g,p){const px=makePx(g);g.save();g.translate(2,0);const by=p.by,swim=p.prop==='swimcap'||p.prop==='goggles';
+ famLegs(px,p.legs,p.ly,SI.jeans,SI.shoe);
+ px(5,by,11,6,SI.hoodie);px(5,by,4,6,SI.vest);px(12,by,4,6,SI.vest);px(6,by+1,1,3,SI.vestHi);px(10,by+2,1,1,'#666');
+ if(p.prop!=='bib'&&p.prop!=='medal'){px(12,by+1,1,1,SI.bag);px(11,by+2,1,1,SI.bag);px(10,by+3,1,1,SI.bag);px(9,by+4,1,1,SI.bag);px(6,by+4,4,2,SI.bag);px(7,by+5,1,1,'#ddd');px(8,by+4,1,1,'#ddd')}
+ famArm(px,-1,p.aL,by,SI.hoodie,SI.skin);famArm(px,1,p.aR,by,SI.hoodie,SI.skin);
+ const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);
+ h(7,0,1,1,SI.hair);h(12,0,1,1,SI.hair);h(6,1,9,1,SI.hair);h(5,2,11,3,SI.hair);h(8,2,3,1,SI.hairHi);
+ h(5,5,11,6,SI.skin);h(6,11,9,1,SI.skin);h(5,10,1,1,SI.skinSh);h(15,10,1,1,SI.skinSh);
+ h(5,5,3,1,SI.hair);h(12,5,4,1,SI.hair);h(5,6,1,1,SI.hair);h(4,4,1,8,SI.hair);h(16,4,1,8,SI.hair);h(3,6,1,4,SI.hair);
+ famFace(px,p,SI.lid,SI.mouth,SI.skinSh);if(!p.lying&&!swim){h(4,12,1,4,SI.hair);h(16,12,1,3,SI.hair)}famProp(px,p,by);g.restore()}
+const WO={hair:'#141418',hairHi:'#34343c',skin:'#f2c8a6',skinSh:'#d8a884',shirt:'#1c1c22',print:'#e8e8e8',pants:'#1c1c22',crocs:'#6a6a72',dobok:'#f6f6f6',dobokSh:'#dcdce4',belt:'#111',lid:'#5a3a30',mouth:'#b85a50'};
+function drawWoo(g,p){const px=makePx(g);g.save();g.translate(2,0);const by=p.by,dob=p.prop==='dobok'||p.prop==='board',top=dob?WO.dobok:WO.shirt;
+ famLegs(px,p.legs,p.ly,dob?WO.dobok:WO.pants,dob?WO.skin:WO.crocs);px(5,by,11,6,top);
+ if(dob){px(8,by,2,3,WO.dobokSh);px(11,by,2,3,WO.dobokSh);px(10,by+1,1,2,WO.dobokSh);px(5,by+4,11,1,WO.belt);px(9,by+5,1,1,WO.belt);px(11,by+5,1,1,WO.belt)}
+ else{px(6,by+1,1,1,WO.print);px(6,by+3,1,1,WO.print);px(6,by+5,1,1,WO.print);px(13,by+1,2,2,'#e8312a');px(9,by,3,1,'#2c2c34')}
+ famArm(px,-1,p.aL,by,top,WO.skin);famArm(px,1,p.aR,by,top,WO.skin);
+ const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);
+ h(6,1,9,1,WO.hair);h(5,2,11,3,WO.hair);h(7,2,3,1,WO.hairHi);h(12,1,2,1,WO.hair);
+ h(5,5,11,6,WO.skin);h(6,11,9,1,WO.skin);h(5,10,1,1,WO.skinSh);h(15,10,1,1,WO.skinSh);
+ h(5,5,6,1,WO.hair);h(13,5,2,1,WO.hair);h(4,3,1,4,WO.hair);h(16,3,1,3,WO.hair);h(4,7,1,2,WO.skin);h(16,7,1,2,WO.skin);h(7,6,2,1,WO.hair);h(12,6,2,1,WO.hair);
+ famFace(px,p,WO.lid,WO.mouth,WO.skinSh);if(p.prop!=='dobok')famProp(px,p,by);
+ if(p.prop==='mic'){h(6,7,4,2,'#111');h(11,7,4,2,'#111');h(10,7,1,1,'#111')}g.restore()}
+</script>
+<script>/* ===== 펫 엔진 — 안드로이드 앱 Engine.kt 를 웹으로 옮김 ===== */
+const G=2600, rnd=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.floor(Math.random()*a.length)], fl=Math.floor;
+const Pz=o=>Object.assign({hx:0,hy:0,by:12,ly:18,legs:'stand',aL:'down',aR:'down',eyes:'open',look:1,mouth:'flat',blush:false,lying:false,pot:false,eat:false,pen:null,box:false,prop:null,lift:0,pivot:0,sx:1,sy:1,rot:0},o);
+let SC=2, W=innerWidth, H=innerHeight, plats=[], floorP=null, minX=24, maxX=300;
+let actx=null, soundOn=true, spicyOn=false;
+
+/* ---- 효과음 (파일 없이 합성) ---- */
+function tone(type,f0,f1,f2,dur,vol,vib){if(!soundOn||!actx)return;const t=actx.currentTime,o=actx.createOscillator(),gn=actx.createGain();
+ o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur*.25);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+ if(vib){const l=actx.createOscillator(),lg=actx.createGain();l.frequency.value=vib;lg.gain.value=f1*.12;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur)}
+ gn.gain.setValueAtTime(.0001,t);gn.gain.exponentialRampToValueAtTime(vol,t+.02);gn.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(gn);gn.connect(actx.destination);o.start(t);o.stop(t+dur+.05)}
+const sfx={boing:s=>tone('square',170,560,240,.6,.07*s,16),jump:()=>tone('square',300,700,900,.18,.05),grab:()=>tone('square',600,900,500,.12,.04),pop:()=>tone('triangle',500,800,1000,.15,.06),
+ swish:()=>tone('sawtooth',900,380,160,.16,.035),stab:()=>tone('square',220,140,80,.12,.1),slurp:()=>tone('sine',260,620,380,.16,.03),
+ crash:()=>{if(!soundOn||!actx)return;const t=actx.currentTime,len=Math.floor(actx.sampleRate*.7),b=actx.createBuffer(1,len,actx.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);const s=actx.createBufferSource();s.buffer=b;const f=actx.createBiquadFilter();f.type='highpass';f.frequency.value=2200;
+  const gn=actx.createGain();gn.gain.value=.28;s.connect(f);f.connect(gn);gn.connect(actx.destination);s.start(t);[2400,3300,4100,2900,3700].forEach((fr,i)=>setTimeout(()=>tone('triangle',fr,fr*1.02,fr*.97,.3,.035),50+i*80))}};
+const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+
+/* ---- 화면 효과 ---- */
+function floatText(txt,x,y,cls=''){const e=document.createElement('div');e.className='fl '+cls;e.textContent=txt;e.style.left=x+'px';e.style.top=y+'px';document.body.appendChild(e);setTimeout(()=>e.remove(),1900)}
+function flash(o){const f=document.createElement('div');f.className='flash';document.body.appendChild(f);f.animate([{opacity:o},{opacity:0}],{duration:420}).onfinish=()=>f.remove()}
+function shake(a){document.getElementById('screen').animate([{transform:'translate(0,0)'},{transform:`translate(${-a}px,${a/2}px)`},{transform:`translate(${a}px,${-a/2}px)`},{transform:`translate(${-a/2}px,${a/3}px)`},{transform:'translate(0,0)'}],{duration:260})}
+function shatter(wx,y,big){const R=big?Math.min(300,W*.6):Math.min(170,W*.42);
+ let d='';const NC=big?16:12;for(let i=0;i<NC;i++){const a=i/NC*Math.PI*2+Math.random()*.4;let p='M0 0';for(let j=1;j<=4;j++){const L=R*j/4*(.65+Math.random()*.5),aa=a+(Math.random()-.5)*.35;p+=` L${(Math.cos(aa)*L).toFixed(1)} ${(Math.sin(aa)*L).toFixed(1)}`}d+=`<path d="${p}"/>`}
+ for(const rr of(big?[22,55,100,160,230]:[18,42,78,120])){let p='';for(let i=0;i<=12;i++){const a=i/12*Math.PI*2,q=rr*(.8+Math.random()*.4);p+=(i?' L':'M')+(Math.cos(a)*q).toFixed(1)+' '+(Math.sin(a)*q).toFixed(1)}d+=`<path d="${p}" stroke-dasharray="${rr/2} ${rr/3}"/>`}
+ const el=document.createElement('div');el.className='crack';el.style.left=(wx-R)+'px';el.style.top=(y-R)+'px';
+ el.innerHTML=`<svg width="${2*R}" height="${2*R}" viewBox="${-R} ${-R} ${2*R} ${2*R}"><g stroke="rgba(30,20,60,.55)" stroke-width="3.2" fill="none">${d}</g><g stroke="#fff" stroke-width="1.3" fill="none">${d}</g><circle r="9" fill="rgba(255,255,255,.9)"/></svg>`;
+ document.body.appendChild(el);setTimeout(()=>el.style.opacity=0,3200);setTimeout(()=>el.remove(),4300);
+ for(let i=0;i<(big?26:16);i++){const s=document.createElement('div'),w=rnd(6,16);s.className='shard';s.style.width=s.style.height=w+'px';s.style.left=(wx-w/2)+'px';s.style.top=(y-w/2)+'px';
+  s.style.clipPath=`polygon(${rnd(0,40)}% 0,100% ${rnd(10,60)}%,${rnd(20,80)}% 100%,0 ${rnd(30,90)}%)`;document.body.appendChild(s);
+  const dx=big?rnd(-220,220):(wx>0?-1:1)*rnd(20,200),up=-rnd(20,140),fall=floorP.y-y+rnd(-10,0),r1=rnd(-200,200);
+  s.animate([{transform:'translate(0,0) rotate(0)'},{transform:`translate(${dx*.5}px,${up}px) rotate(${r1/2}deg)`,offset:.3},{transform:`translate(${dx}px,${fall}px) rotate(${r1}deg)`,opacity:1,offset:.8},{transform:`translate(${dx*1.05}px,${fall}px) rotate(${r1}deg)`,opacity:0}],{duration:rnd(1100,1600),easing:'ease-in'}).onfinish=()=>s.remove()}
+ flash(.55);shake(6);sfx.crash();vib([40,30,90])}
+
+/* ---- 공 ---- */
+const ball={el:null,state:'none',x:0,y:0,gy:0,vx:0,vy:0,rot:0,crashed:false,t:0,owner:null,
+ init(){this.el=document.getElementById('ball');const g=this.el.getContext('2d');
+  ['..XXXX..','.XWWWWX.','XWWBBWWX','XWBBBBWX','XWWBBWWX','XBWWWWBX','.XBWWBX.','..XXXX..'].forEach((r,y)=>[...r].forEach((c,x)=>{if(c!=='.'){g.fillStyle={X:'#2a1f3d',W:'#fff',B:'#3a3a48'}[c];g.fillRect(x,y,1,1)}}))},
+ update(dt){if(this.state==='none'){this.el.style.display='none';return}const r=4*SC;this.el.style.display='block';
+  if(this.state==='rest'){if(!this.owner||this.owner.act!=='kick'||this.owner.state!=='act'){this.t+=dt;if(this.t>3)this.state='none'}}
+  else{this.vy+=G*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;this.rot+=this.vx*dt*1.6;
+   if(this.y>=this.gy){this.y=this.gy;this.vy=-this.vy*.45;this.vx*=.85;if(Math.abs(this.vy)<70)this.vy=0}
+   if(!this.crashed&&(this.x>=W-r||this.x<=r)){const right=this.x>=W-r;this.x=right?W-r:r;this.crashed=true;shatter(right?W:0,this.y-r,false);this.vx=-this.vx*.22;this.vy=-180;this.owner&&this.owner.onCrash&&this.owner.onCrash(this.x)}
+   if(this.crashed){this.x=Math.max(r,Math.min(W-r,this.x));this.t+=dt;if(this.t>2.8)this.state='none'}}
+  const s=8*SC;this.el.style.width=this.el.style.height=s+'px';this.el.style.opacity=this.crashed&&this.t>2.2?Math.max(0,1-(this.t-2.2)/.6):1;
+  this.el.style.transform=`translate(${this.x-s/2}px,${this.y-s}px) rotate(${this.rot}deg)`}};
+
+/* ---- 기본 모션 정의 ---- */
+const BASE={idle:[2,4,3],walk:[2.5,5,3,70],run:[1.5,3,1.2,180],jump:[.3,.3,1.6],sit:[3,6,1],sleep:[6,9,.9],wave:[1.8,2.6,1],dance:[3,5,1],look:[2.5,4,1.4],stretch:[2.2,2.8,1],
+ pen:[99,99,.9],power:[99,99,.6],chicken:[99,99,.6],ramen:[8,8,.8],cfly:[8,12,2.5],kick:[99,99,1]};
+const BASEFX={run:['💦',.6],sleep:['z',.8,'z'],dance:['♪',.5]};
+const BASESAY={wave:['안녕! 👋','반가워!','하이~'],look:['?','뭐지?','음…'],stretch:['하암~']};
+const BUSY=['pen','kick','power','chicken','cfly','ramen'];
+
+class Pet{
+ constructor(def){this.def=def;this.allowed=new Set(def.specials.map(s=>s[0]));
+  this.el=document.createElement('div');this.el.className='pet';this.cv=document.createElement('canvas');this.cv.width=this.cv.height=24;this.el.appendChild(this.cv);this.g=this.cv.getContext('2d');
+  this.tmp=document.createElement('canvas');this.tmp.width=this.tmp.height=24;this.tg=this.tmp.getContext('2d');
+  this.bub=document.createElement('div');this.bub.className='bubble';this.aura=document.createElement('div');this.aura.className='aura';this.shadow=document.createElement('div');this.shadow.className='shadow';
+  document.body.append(this.shadow,this.aura,this.el,this.bub);
+  Object.assign(this,{x:W/2,y:-40,vx:0,vy:0,dir:1,state:'air',airKind:'fall',act:'idle',t:0,dur:3,plat:null,pose:Pz({}),rot:0,landT:0,landA:0,impact:0,rebound:false,squash:0,last:'',
+   fxFrame:-1,launched:false,jvx:0,jvy:0,edge:null,fxT:0,form:'normal',formT:0,charge:0,awayT:0,ph:0,kt:0,sw:-1,ki:0,ks:0,ks2:0,flip:-1,kf:-1,kct:-1,
+   tx:0,ty:0,fvx:0,fvy:0,loopT:0,sayT:0,evIdx:0,bubT:0,onCrash:null,clock:0,later:[]});
+  this.bindTouch()}
+ get sc(){return SC*(this.def.scale||1)}
+ get drawY(){return this.y-(this.pose.lift||0)*this.sc}
+ headX(){return this.x} headY(){return this.drawY-21*this.sc}
+ sayLater(t,d){this.later.push([this.clock+d,t])}
+ say(t,s){this.bub.textContent=t;this.bub.style.display='block';this.bubT=s}
+ floater(t,cls='',dx=0){floatText(t,this.x+dx,this.headY()-20,cls)}
+ has(n){return(BASE[n]&&this.allowed.has(n))||!!this.def.moves[n]}
+ spawn(frac){this.x=Math.max(minX,Math.min(maxX,W*frac));this.y=-40;this.goAir(0,0,'fall')}
+ goAir(vx,vy,k){this.state='air';this.vx=vx;this.vy=vy;this.plat=null;this.airKind=k}
+ force(n){if(!this.has(n))return;if(this.state==='act'||this.state==='land'){if(!this.plat)this.plat=floorP;this.startAct(n)}}
+ get canInteract(){const mv=this.def.moves[this.act];return(this.state==='act'&&!BUSY.includes(this.act)&&(!mv||!mv.events||!mv.events.length))||this.state==='land'}
+ interact(n,fx,text){if(!this.has(n)||(this.state!=='act'&&this.state!=='land'))return;if(!this.plat)this.plat=floorP;this.y=this.plat.y;this.startAct(n);this.dir=fx>=this.x?1:-1;if(text)this.say(text,1.8)}
+ bump(fx){if(this.state==='drag'||this.state==='away')return;const d=this.x>=fx?1:-1;this.dir=-d;this.goAir(d*320,-560,'fall');this.floater('띠용!','boing');sfx.boing(.8);vib(20)}
+ startAct(n){Object.assign(this,{state:'act',act:n,t:0,fxFrame:-1,launched:false,edge:null,last:n,evIdx:0,fxT:0,ph:0,kt:0,kct:-1,sw:-1,ki:0,ks:0,ks2:0,flip:-1,kf:-1});
+  const mv=this.def.moves[n];
+  if((n==='cfly'||(mv&&mv.chicken))&&this.form!=='chicken'){this.form='chicken';this.formT=40;flash(.5);for(let i=0;i<4;i++)this.floater('💨','',rnd(-24,24));this.floater('펑!','boing');tone('square',300,150,600,.35,.07)}
+  if(mv){this.dur=mv.dur;if(mv.says)this.say(pick(mv.says),1.6);return}
+  const b=BASE[n];this.dur=n==='sleep'?rnd(this.def.sleepMin,this.def.sleepMax):rnd(b[0],b[1]);
+  if(n==='walk'||n==='run')this.dir=Math.random()<.5?-1:1;
+  if(BASESAY[n])this.say(pick(BASESAY[n]),1.6);
+  if(n==='jump'){const tx=Math.max(minX,Math.min(maxX,this.x+this.dir*rnd(40,110))),cand=plats.filter(p=>p!==this.plat&&!p.floor&&this.y-p.y<300&&this.y-p.y>-500&&Math.abs((p.x1+p.x2)/2-this.x)<340);
+   let gx=tx,gy=this.y;if(cand.length&&Math.random()<.7){const p=pick(cand);gx=rnd(p.x1+10,p.x2-10);gy=p.y}
+   const h=this.y-gy,HH=Math.max(h,0)+55,vy=-Math.sqrt(2*G*HH),T=Math.sqrt(2*HH/G)+Math.sqrt(2*(HH-h)/G);this.jvx=(gx-this.x)/T;this.jvy=vy;if(Math.abs(this.jvx)>5)this.dir=Math.sign(this.jvx)}
+  if(n==='cfly'){this.plat=null;this.fvx=0;this.fvy=-260;this.say('날아오른다아~!!',1.4);this.floater('💨');sfx.jump()}}
+ weight(k){const ch=this.form==='chicken',mv=this.def.moves[k];if(mv&&mv.spicy&&!spicyOn)return 0;if(mv)return mv.chicken?(ch?(mv.w??.45):0):(ch?(mv.w??.45)*.4:(mv.w??.45));
+  if(k==='cfly')return ch?2.5:0;if(k==='kick'&&(!this.plat||!this.plat.floor||ball.state!=='none'))return 0;return BASE[k][2]}
+ nextAct(){const keys=[...this.allowed,...Object.keys(this.def.moves)].filter(k=>k!==this.last);let tot=0;const w=keys.map(k=>{const v=this.weight(k);tot+=v;return v});
+  let r=Math.random()*tot;for(let i=0;i<keys.length;i++){r-=w[i];if(r<=0)return this.startAct(keys[i])}this.startAct('idle')}
+ land(p){const imp=this.vy;this.y=p.y;if(p.el){p.el.classList.remove('hit');void p.el.offsetWidth;p.el.classList.add('hit')}
+  if(imp>1150&&!this.rebound){this.rebound=true;this.vy=-imp*.33;this.vx*=.5;this.squash=.14;sfx.boing(1);this.floater('띠용!','boing');vib(25);return}
+  this.state='land';this.plat=p;this.vx=0;this.vy=0;this.landT=0;this.impact=this.rebound?Math.max(imp,1200):imp;this.landA=Math.min(.45,Math.max(.14,imp/2000));
+  if(imp>420||this.rebound){this.floater(this.rebound?'띠요옹~':'띠용~','boing');sfx.boing(Math.min(1,imp/1200+.3));vib(18)}this.rebound=false}
+ bindTouch(){let d=null;const el=this.el;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();ensureAudio();el.setPointerCapture(e.pointerId);
+   d={id:e.pointerId,ox:this.x-e.clientX,oy:this.y-e.clientY,tx:this.x,ty:this.y,sx:e.clientX,sy:e.clientY,t0:performance.now(),moved:0,hist:[],prev:this.plat,said:false,long:false};
+   this.state='drag';this.plat=null;this.rot=0;this.charge=0;this.drag=d;sfx.grab()});
+  el.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id||d.long)return;d.tx=e.clientX+d.ox;d.ty=e.clientY+d.oy;d.moved=Math.max(d.moved,Math.hypot(e.clientX-d.sx,e.clientY-d.sy));
+   d.hist.push({t:performance.now(),x:d.tx,y:d.ty});if(d.hist.length>12)d.hist.shift();if(d.moved>14&&!d.said){d.said=true;this.say(pick(['으앗!','어디 가?','놔줘~','높다아']),1.2)}});
+  const end=e=>{if(!d||e.pointerId!==d.id)return;const dd=d;d=null;this.drag=null;if(dd.long)return;
+   if(dd.moved<10&&performance.now()-dd.t0<350&&dd.prev){this.plat=dd.prev;this.y=dd.prev.y;this.startAct('wave');this.say(this.def.tapSay,1.3);this.floater('❤');sfx.pop();return}
+   const now=performance.now(),h=dd.hist.filter(p=>now-p.t<110);let vx=0,vy=0;if(h.length>1){const a=h[0],b=h[h.length-1],dt=Math.max(.016,(b.t-a.t)/1000);vx=(b.x-a.x)/dt;vy=(b.y-a.y)/dt}
+   vx=Math.max(-1500,Math.min(1500,vx));vy=Math.max(-2000,Math.min(1500,vy));if(vy<-900)this.say('으아아~',1.2);if(Math.abs(vx)>30)this.dir=Math.sign(vx);this.goAir(vx,vy,'fall')};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end)}
+
+ update(dt,now){this.clock+=dt;let p=null;
+  if(this.state==='act'){this.t+=dt;const mv=this.def.moves[this.act];
+   if(mv){this.moveUpdate(mv,dt);if(this.state==='act'){p=this.movePose(mv,this.t);if(this.t>=this.dur)this.nextAct()}}
+   else{const b=BASE[this.act];if(b[3])this.groundMove(b[3],dt);this.actUpdate(dt);
+    if(this.state==='act'){p=this.actPose(this.t);const f=BASEFX[this.act];if(f){this.fxT+=dt;if(this.fxT>f[1]){this.fxT=0;this.floater(f[0],f[2]||'',rnd(-10,14))}}if(this.state==='act'&&this.t>=this.dur)this.nextAct()}}}
+  if(this.state==='drag'){const d=this.drag;if(d){d.dt=(d.dt||0)+dt;
+    if(!d.long&&d.moved<10&&d.dt>.6){d.long=true;const pr=d.prev||floorP;this.plat=pr;this.y=pr.y;this.startAct('idle');this.say('메뉴 열게요!',1);openMenu(this.def.id)}
+    else{const k=Math.min(1,dt*22),ox=this.x;this.x+=(d.tx-this.x)*k;this.y+=(d.ty-this.y)*k;this.x=Math.max(minX,Math.min(maxX,this.x));
+     const v=(this.x-ox)/Math.max(dt,.001);this.rot+=(Math.max(-30,Math.min(30,-v*.04))*this.dir-this.rot)*Math.min(1,dt*10);
+     const f=fl(now/260)%2;p=Pz({legs:f?'dangle':'tuck',aL:'up',aR:'up',mouth:'o',eyes:'wide',sy:1.06,sx:.96,rot:this.rot})}}else p=this.pose}
+  if(this.state==='air'){const py=this.y;this.vy+=G*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;
+   if(this.x<minX){this.x=minX;this.vx=-this.vx*.5;this.dir=1}if(this.x>maxX){this.x=maxX;this.vx=-this.vx*.5;this.dir=-1}
+   if(this.vy>0){let hit=null;for(const q of plats){if(py<=q.y+1&&this.y>=q.y&&this.x>=q.x1&&this.x<=q.x2&&(!hit||q.y<hit.y))hit=q}if(!hit&&this.y>=floorP.y)hit=floorP;if(hit)this.land(hit)}
+   if(this.state==='air'){const f=fl(now/90)%2;
+    p=this.airKind==='jump'&&this.vy<0?Pz({aL:'up',aR:'up',legs:'tuck',mouth:'smile',sy:1.08,sx:.94}):Pz({aL:f?'up':'out',aR:f?'out':'up',legs:f?'tuck':'dangle',mouth:'open',eyes:'wide',rot:Math.max(-15,Math.min(15,this.vx*.012))*this.dir});
+    if(this.squash>0){this.squash-=dt;p.sy=.7;p.sx=1.3}}}
+  if(this.state==='land'){this.landT+=dt;const t=this.landT,e=Math.exp(-5.5*t),sy=1-this.landA*e*Math.cos(21*t),sx=1+(1-sy)*.8;
+   p=t<.2?Pz({legs:'walkA',aL:'out',aR:'out',eyes:'closed',sy,sx}):Pz({mouth:'smile',blush:true,sy,sx});
+   if(t>.95){if(this.impact>1500){this.startAct('look');this.floater('💫');this.say('어지러워…',1.4)}else this.nextAct()}}
+  if(this.state==='away'){this.awayT-=dt;p=this.pose;if(this.awayT<=0){this.x=rnd(minX,maxX);this.y=-40;this.goAir(0,0,'fall');this.say('…휴',1)}}
+  if(this.form!=='normal'&&this.state!=='drag'&&!(this.state==='act'&&this.act==='cfly')){this.formT-=dt;if(this.formT<=0){this.form='normal';for(let i=0;i<3;i++)this.floater('💨','',rnd(-20,20));this.say('원래대로…',1.2)}}
+  p=p||this.pose;if(this.form==='chicken'&&this.state==='act'&&['idle','look','sit','chicken'].includes(this.act))p.box=true;this.pose=p;
+  if(this.later.length){const due=this.later.filter(l=>l[0]<=this.clock);if(due.length){this.later=this.later.filter(l=>l[0]>this.clock);if(this.state!=='away')this.say(due[due.length-1][1],1.8)}}
+  if(this.bubT>0){this.bubT-=dt;if(this.bubT<=0||this.state==='away')this.bub.style.display='none'}}
+ groundMove(sp,dt){const nx=this.x+this.dir*sp*dt;if(nx<minX||nx>maxX){this.dir*=-1;return}const p=this.plat;
+  if(p&&!p.floor&&(nx<p.x1||nx>p.x2)){if(this.edge===null)this.edge=Math.random()<.5;if(this.edge){this.dir*=-1;this.edge=null;return}this.x=nx;this.say('어어?!',1);this.goAir(this.dir*sp*.7,-80,'fall');return}this.x=nx}
+
+ moveUpdate(mv,dt){if(mv.move){const sd=mv.back?-this.dir:this.dir,nx=this.x+sd*mv.move*dt;if(nx<minX||nx>maxX)this.dir*=-1;else{
+   const p=this.plat;if(p&&!p.floor&&(nx<p.x1||nx>p.x2)){this.x=nx;this.goAir(sd*mv.move*.7,-80,'fall');return}this.x=nx}}
+  const ev=mv.events||[];while(this.evIdx<ev.length&&this.t>=ev[this.evIdx][0]){const c=ev[this.evIdx][1];this.evIdx++;
+   if(c.startsWith('say:'))this.say(c.slice(4),1.4);else if(c.startsWith('boing:')){this.floater(c.slice(6),'boing');sfx.boing(.6)}else if(c.startsWith('fl:'))this.floater(c.slice(3),'',rnd(-10,10));
+   else if(c==='shake'){shake(5);vib(30)}else if(c==='flash')flash(.5);else if(c==='pop')sfx.pop();else if(c==='crash'){shatter(this.x+this.dir*9*this.sc,this.y-11*this.sc,true);this.onCrash&&this.onCrash(this.x)}}
+  if(mv.fx){this.fxT+=dt;if(this.fxT>mv.fxEvery){this.fxT=0;this.floater(mv.fx,mv.fxKind||'',rnd(-12,14))}}}
+ movePose(mv,t){const list=t>=(mv.switchAt??99)&&mv.frames2?mv.frames2:mv.frames;const p=Pz(Object.assign({},list[fl(t*mv.fps)%list.length]));
+  p.hx|=0;p.hy|=0;p.by|=0;p.ly|=0;
+  if(mv.spin)p.sx*=Math.cos(t*mv.spin);if(mv.roll){p.rot=t*mv.roll;p.pivot=11}if(mv.jitter)p.hx=fl(Math.random()*3)-1;
+  if(mv.hop)p.lift=Math.abs(Math.sin(t*mv.hopRate*Math.PI))*mv.hop;if(mv.float)p.lift=mv.float*(.5-.5*Math.cos(Math.min(t,2)*Math.PI/2))+Math.sin(t*2)*1.2;return p}
+
+ actUpdate(dt){const t=this.t;
+  switch(this.act){
+  case'jump':if(t>.18&&!this.launched){this.launched=true;sfx.jump();this.goAir(this.jvx,this.jvy,'jump')}break;
+  case'pen':this.kt+=dt;switch(this.ph){
+    case 0:if(this.kt>.7){this.ph=1;this.kt=0;this.say('얍! 얍!',1.2)}break;
+    case 1:{const s=fl(this.kt/.22);if(s!==this.sw){this.sw=s;sfx.swish();if(s%2===0)this.floater('슉!','',this.dir*14)}if(this.kt>2){this.ph=2;this.kt=0;this.say('필살… 찌르기!',1.1)}break}
+    case 2:if(this.kt>.7){this.ph=3;this.kt=0;sfx.stab();shatter(this.x+this.dir*9*this.sc,this.y-11*this.sc,true);this.onCrash&&this.onCrash(this.x)}break;
+    case 3:if(this.kt>.7){this.ph=4;this.kt=0;this.say('어… 어떡해!!',1.4)}break;
+    case 4:this.panic(dt,1.6,['내가 안 그랬어!','도망쳐~!']);break;
+    default:this.flee(dt)}break;
+  case'kick':this.kt+=dt;switch(this.ph){
+    case 0:if(this.kt>.35&&ball.state==='none'){Object.assign(ball,{state:'rest',x:this.x+this.dir*10*this.sc,y:(this.plat||floorP).y,gy:(this.plat||floorP).y,vx:0,vy:0,crashed:false,t:0,owner:this})}if(this.kt>.75){this.ph=1;this.kt=0}break;
+    case 1:{const nx=this.x-this.dir*60*dt;if(nx>minX&&nx<maxX)this.x=nx;if(this.kt>.9){this.ph=2;this.kt=0;this.say('간다~!',1)}break}
+    case 2:this.x+=this.dir*230*dt;if(Math.abs(ball.x-this.x)<=8*this.sc||this.kt>2){this.ph=3;this.kt=0;ball.state='fly';ball.vx=this.dir*1150;ball.vy=-420;sfx.stab()}break;
+    case 3:if(this.kt>.3){this.ph=4;this.kt=0;this.kct=-1}break;
+    case 4:if(ball.crashed&&this.kct<0){this.kct=0;this.say('헉!!',1.2)}if(this.kct>=0)this.kct+=dt;
+      if(this.kct>1.2){this.ph=5;this.kt=0;this.say(pick(['어떡해!! 유리가…','내가 안 그랬어…!']),1.4)}else if(this.kt>4)this.nextAct();break;
+    case 5:this.panic(dt,1.4,['도망쳐~!! 🐻💨']);break;
+    default:this.flee(dt)}break;
+  case'power':this.kt+=dt;if(this.ph===0){this.charge=Math.min(1,this.kt/1.8);this.ks+=dt;
+    if(this.ks>.22){this.ks=0;shake(3);tone('sawtooth',70+this.kt*60,90+this.kt*80,60+this.kt*60,.22,.05);if(this.kt>.6)this.floater('⚡','',rnd(-20,20))}
+    if(this.ki===0){this.ki=1;this.say('흐으읍…',1)}if(this.kt>1&&this.ki===1){this.ki=2;this.say('하아아아아!!',1)}
+    if(this.kt>1.8){this.ph=1;this.kt=0;this.charge=0;this.form='power';this.formT=30;flash(.8);shake(9);tone('square',200,900,1200,.5,.08);vib(120);this.say('파워업 완료!',1.4);this.floater('💥')}}
+    else if(this.kt>1.6)this.nextAct();break;
+  case'chicken':this.kt+=dt;if(this.ph===0){this.ks+=dt;if(this.ks>.15){this.ks=0;this.floater('✨','',rnd(-22,22));tone('triangle',600+this.kt*600,900+this.kt*600,700+this.kt*600,.12,.03)}
+    if(this.kt>1.1){this.ph=1;this.kt=0;this.form='chicken';this.formT=40;flash(.6);for(let i=0;i<4;i++)this.floater('💨','',rnd(-24,24));this.floater('펑!','boing');tone('square',300,150,600,.35,.07);this.say('치킨 타임~ 🍗',1.6)}}
+    else if(this.kt>2.4)this.nextAct();break;
+  case'ramen':{const ev=[[.05,'쉿… 아무도 없지?'],[2.1,'후루룩'],[4.6,'…!'],[5.5,'후루룩 쩝쩝'],[7.1,'꺼억~ 😋']];
+    while(this.ki<ev.length&&t>=ev[this.ki][0]){this.say(ev[this.ki][1],this.ki?1:1.6);this.ki++}
+    if(t>1.8&&t<7.1&&!(t>4.6&&t<5.4)){this.ks+=dt;if(this.ks>.55){this.ks=0;this.floater('~','z',rnd(-12,12))}const f=fl(t*3)%3;if(f!==this.kf){this.kf=f;if(f===0)sfx.slurp()}}break}
+  case'cfly':{this.ks+=dt;this.ks2+=dt;this.sayT+=dt;
+    if(this.ki===0||Math.hypot(this.tx-this.x,this.ty-this.y)<30||this.ks>2.6){this.ki=1;this.ks=0;this.tx=rnd(minX,maxX);this.ty=rnd(H*.12,floorP.y-90)}
+    const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.max(1,Math.hypot(dx,dy)),sp=250,k=Math.min(1,dt*2.5);
+    this.fvx+=(dx/d*sp-this.fvx)*k;this.fvy+=(dy/d*sp-this.fvy)*k;this.x+=this.fvx*dt;this.y+=this.fvy*dt+Math.sin(this.clock*9)*30*dt;
+    this.x=Math.max(minX,Math.min(maxX,this.x));this.y=Math.max(H*.08,Math.min(floorP.y,this.y));if(Math.abs(this.fvx)>25)this.dir=Math.sign(this.fvx);
+    if(this.ks2>.38){this.ks2=0;this.floater(pick(['💕','✨','♪','💖','🌟','🪶']),'',rnd(-16,16))}
+    if(this.sayT>2.6){this.sayT=0;this.say(pick(['날 수 있다아~!!','꼬끼오~! 🐔','행복해~','하늘 최고!','위이잉~','치킨 아니고 비행기다!']),1.6)}
+    if(this.loopT>0)this.loopT-=dt;else if(Math.random()<dt*.18){this.loopT=.9;this.floater('빙그르르~','boing')}
+    if(t>=this.dur){this.loopT=0;this.goAir(this.fvx*.5,-150,'fall');this.say('착지할게~!',1.1)}break}
+  }}
+ panic(dt,len,lines){this.ks2+=dt;if(this.ks2>.45){this.ks2=0;this.floater('💦','',rnd(-12,12))}const s=fl(this.kt/.18);if(s!==this.flip){this.flip=s;this.dir=-this.dir}
+  if(this.kt>len){this.ph++;this.kt=0;this.dir=this.x>W/2?1:-1;this.say(pick(lines),1.4)}}
+ flee(dt){this.x+=this.dir*340*dt;if(this.x<-40||this.x>W+40){this.state='away';this.awayT=1.5;this.bubT=0;this.bub.style.display='none'}}
+
+ actPose(t){const kt=this.kt,ph=this.ph;
+  switch(this.act){
+  case'idle':{const b=fl(t*1.6)%2;return Pz({by:12+b,hy:b,eyes:t%2.7<.13?'closed':'open',look:t>this.dur*.6?-1:1})}
+  case'walk':{const f=fl(t*8)%4;return Pz({legs:['walkA','stand','walkB','stand'][f],hy:f%2,by:12+f%2,aL:f===0?'hip':'down',aR:f===2?'hip':'down'})}
+  case'run':{const f=fl(t*12)%2;return Pz({legs:f?'runA':'walkB',hy:f,by:12+f,aL:f?'out':'hip',aR:f?'hip':'out',mouth:'open',hx:1})}
+  case'jump':return Pz({by:13,hy:2,legs:'tuck',aL:'out',aR:'out',sy:.85,sx:1.1});
+  case'sit':return Pz({by:14,hy:2,ly:20,legs:'sit',eyes:t%3<.13?'closed':'open',mouth:t>1.5?'smile':'flat',blush:t>1.5});
+  case'sleep':return Pz({lying:true,eyes:'closed',mouth:fl(t*1.2)%2?'o':'flat'});
+  case'wave':{const f=fl(t*5)%2;return Pz({aR:f?'wave':'up',mouth:'smile',blush:true})}
+  case'dance':{const f=fl(t*4)%4;if(f!==this.fxFrame){this.fxFrame=f;if(f%2===0)this.dir*=-1}const o=f%2;
+    return Pz({aL:o?'up':'out',aR:o?'out':'up',legs:o?'walkB':'walkA',by:12+o,hy:o,mouth:'smile',eyes:f===3?'closed':'open',sy:o?.94:1.04})}
+  case'look':{const s=fl(t/.7)%2;return Pz({look:s?-1:1,hx:s?-1:1,eyes:'wide',mouth:'o'})}
+  case'stretch':if(t<1.5){const q=Math.sin(Math.min(t/1.5,1)*Math.PI);return Pz({aL:'up',aR:'up',eyes:'closed',mouth:'open',sy:1+.1*q,sx:1-.05*q,legs:'dangle'})}return Pz({mouth:'smile',blush:true});
+  case'pen':{const f=fl(kt*9)%4;
+    if(ph===0)return Pz({aR:'out',pen:'out',mouth:'smile'});
+    if(ph===1){const s=((this.sw%3)+3)%3;return Pz(s===0?{aR:'up',pen:'up',mouth:'open',legs:'walkA',hx:1}:s===1?{aR:'out',pen:'out'}:{aR:'out',pen:'down',mouth:'open',legs:'walkA',by:13,hy:1,hx:1})}
+    if(ph===2)return Pz({aR:'hip',aL:'out',by:13,hy:1,sx:.9,sy:1.05,eyes:'wide',hx:-1});
+    if(ph===3)return Pz({aR:'out',pen:'stab',legs:'walkA',mouth:'open',eyes:'wide',sx:1.3,sy:1.3,hx:1});
+    if(ph===4)return this.panicPose(kt);return this.runPose(f)}
+  case'kick':{const f=fl(kt*10)%4;
+    if(ph===0)return Pz({by:13,hy:2,aR:'out'});if(ph===1)return Pz({legs:['walkB','stand','walkA','stand'][f],mouth:'smile'});
+    if(ph===2)return Pz({legs:f%2?'runA':'walkB',hy:f%2,by:12+f%2,aL:f%2?'out':'hip',aR:f%2?'hip':'out',mouth:'open',hx:1});
+    if(ph===3)return Pz({legs:'kick',aL:'out',aR:'up',mouth:'open',hx:1,sx:1.06});
+    if(ph===4)return this.kct<0?Pz({eyes:'wide',mouth:'o'}):Pz({eyes:'wide',mouth:'open',aL:'up',aR:'up',sy:1.06,sx:.95,hx:fl(kt*14)%2});
+    if(ph===5)return this.panicPose(kt);return this.runPose(f)}
+  case'power':if(this.ph===0){const j=fl(t*20)%2;return Pz({by:13,hy:1,aL:'hip',aR:'hip',eyes:'closed',mouth:'open',hx:j?1:-1,sx:1+.05*j})}return Pz({aL:'out',aR:'out',mouth:'smile',legs:'walkA',sy:1.06});
+  case'chicken':if(this.ph===0)return Pz({sx:Math.cos(t*22)*(1-t*.3),aL:'up',aR:'up',eyes:'closed',mouth:'open'});return Pz({box:true,mouth:'smile',hy:fl(t*3)%2});
+  case'cfly':{const f=fl(this.clock*10)%2;let r=Math.max(-15,Math.min(15,this.fvx*.03))*this.dir;if(this.loopT>0)r+=(1-this.loopT/.9)*360;
+    return Pz({aL:f?'up':'out',aR:f?'out':'up',legs:'tuck',eyes:fl(this.clock*.7)%3===2?'sparkle':'closed',mouth:f?'open':'smile',blush:true,rot:r,pivot:11})}
+  case'ramen':{const S={by:14,hy:2,ly:20,legs:'sit',pot:true};
+    if(t<1.8){const s=fl(t/.35)%2;return Pz({look:s?-1:1,hx:s?-1:1,eyes:'wide',by:13,hy:1})}
+    if(t>4.6&&t<5.4)return Pz({...S,look:fl(t/.2)%2?-1:1,eyes:'wide',mouth:'o'});if(t>=7.1)return Pz({...S,eyes:'closed',mouth:'smile',blush:true});
+    const f=fl(t*3)%3;return f===0?Pz({...S,eat:true,aR:'none',mouth:'open',eyes:'closed'}):Pz({...S,hy:f===1?2:3,blush:true})}
+  }return Pz({})}
+ panicPose(kt){const j=fl(kt*14)%2;return Pz({aL:j?'up':'out',aR:j?'out':'up',eyes:'wide',mouth:'open',hx:j?1:-1,legs:j?'walkA':'walkB',by:12+j,hy:j})}
+ runPose(f){return Pz({legs:f%2?'runA':'walkB',hy:f%2,by:12+f%2,aL:'up',aR:'up',mouth:'open',eyes:'wide',hx:1})}
+
+ render(now){const p=this.pose,g=this.g;
+  if(p.lying){this.tg.clearRect(0,0,24,24);this.def.draw(this.tg,p,this.form,now);g.clearRect(0,0,24,24);g.save();g.translate(24,2);g.rotate(Math.PI/2);g.drawImage(this.tmp,0,0);g.restore()}
+  else{g.clearRect(0,0,24,24);this.def.draw(g,p,this.form,now)}
+  const s=24*this.sc;this.el.style.width=this.el.style.height=s+'px';this.el.style.display=this.state==='away'?'none':'block';
+  this.el.style.transform=`translate(${this.x-s/2}px,${this.drawY-22*this.sc}px)`;
+  this.cv.style.transformOrigin=`50% ${((22-(p.pivot||0))/24*100).toFixed(1)}%`;
+  this.cv.style.transform=`scale(${this.dir*p.sx},${p.sy}) rotate(${p.rot}deg)`;
+  // 그림자
+  let gy=this.y;if(this.state!=='act'&&this.state!=='land'){let best=null;for(const q of plats){if(q.y>=this.y-2&&this.x>=q.x1&&this.x<=q.x2&&(!best||q.y<best.y))best=q}gy=best?best.y:floorP.y}
+  const dist=Math.max(0,gy-this.drawY),w=Math.max(16,(p.lying?17:12)*this.sc-dist*.08);
+  this.shadow.style.display=this.state==='away'?'none':'block';this.shadow.style.width=w+'px';this.shadow.style.opacity=Math.max(.2,1-dist/400);this.shadow.style.transform=`translate(${this.x-w/2}px,${gy-4}px)`;
+  // 오라
+  const ac=this.form==='power'?1:this.charge;if(ac>0&&this.state!=='away'){const aw=26*this.sc*(.5+ac*.6),ah=32*this.sc*(.5+ac*.65);this.aura.style.display='block';this.aura.style.width=aw+'px';this.aura.style.height=ah+'px';
+   this.aura.style.opacity=.4+ac*.6;this.aura.style.transform=`translate(${this.x-aw/2}px,${this.drawY-ah+4}px)`}else this.aura.style.display='none';
+  if(this.bubT>0){const b=this.bub,bx=Math.max(4,Math.min(W-b.offsetWidth-4,this.x-b.offsetWidth/2));b.style.transform=`translate(${bx}px,${this.headY()-b.offsetHeight-14}px)`}}
+ remove(){this.el.remove();this.bub.remove();this.aura.remove();this.shadow.remove()}
+}
+</script>
+<script>
+{
+const IDS=["sia", "woo"],STORE="sk_";
+const SIA_MOVES={"sprint":{"label":"💨 전력질주","dur":3.0,"fps":12.0,"frames":[{"hx":1.0,"legs":"runA","aL":"out","aR":"hip","mouth":"grin","rot":6.0},{"hx":1.0,"legs":"walkB","aL":"hip","aR":"out","mouth":"open","rot":6.0}],"move":300.0,"w":1.0,"fx":"💨","fxEvery":0.2,"says":["비켜비켜~!","나 진짜 빠르다?"]},"marathon":{"label":"🏃 마라톤","dur":7.0,"fps":6.0,"frames":[{"legs":"walkA","aL":"hip","aR":"out","prop":"bib"},{"legs":"walkB","aL":"out","aR":"hip","prop":"bib"}],"move":110.0,"w":0.9,"events":[[0.1,"say:마라톤 가즈아!"],[3.0,"say:후-하 후-하"],[6.0,"say:완주가 목표!"]],"fx":"💦","fxEvery":1.0},"startLine":{"label":"출발선 준비","dur":3.0,"fps":1.0,"frames":[{"hy":3.0,"by":14.0,"ly":19.0,"legs":"tuck","aR":"out","eyes":"angry"}],"switchAt":1.8,"frames2":[{"hx":1.0,"legs":"runA","aL":"out","aR":"hip","mouth":"open","rot":8.0}],"events":[[0.1,"say:제자리에… 준비…"],[1.8,"boing:땅!"],[1.8,"pop"]]},"finish":{"label":"🥇 결승선 1등","dur":3.0,"fps":2.0,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"grin","prop":"bib"},{"aL":"up","aR":"up","eyes":"sparkle","mouth":"open","prop":"bib"}],"hop":4.0,"hopRate":1.5,"says":["1등이다!!","역시 나지~"],"fx":"🎉","fxEvery":0.4},"relay":{"label":"이어달리기","dur":3.5,"fps":10.0,"frames":[{"hx":1.0,"legs":"runA","aR":"out","mouth":"open","prop":"baton"},{"hx":1.0,"legs":"walkB","aR":"hip","prop":"baton"}],"move":240.0,"says":["바통 받았다! 간다!"]},"medal":{"label":"메달 자랑","dur":3.0,"fps":1.5,"frames":[{"aL":"hip","aR":"hip","mouth":"grin","prop":"medal","sy":1.04},{"aL":"hip","aR":"hip","eyes":"closed","mouth":"smile","prop":"medal"}],"says":["마라톤 완주 메달!","이거 봐봐~"],"fx":"✨","fxEvery":0.6},"pant":{"label":"헥헥 숨 고르기","dur":3.0,"fps":3.0,"frames":[{"hy":2.0,"by":13.0,"aL":"hip","aR":"hip","eyes":"closed","mouth":"open"},{"hy":2.0,"by":13.0,"aL":"hip","aR":"hip","mouth":"o"}],"says":["헥헥… 그래도 재밌다!"],"fx":"💦","fxEvery":0.5},"legStretch":{"label":"다리 스트레칭","dur":3.5,"fps":1.0,"frames":[{"hy":2.0,"by":13.0,"legs":"walkA"},{"legs":"kick","aL":"out","aR":"out"}],"says":["스트레칭은 필수!"]},"warmup":{"label":"제자리 뛰기","dur":3.0,"fps":6.0,"frames":[{"legs":"walkA","aL":"hip","aR":"out"},{"legs":"walkB","aL":"out","aR":"hip"}],"hop":2.0,"hopRate":3.0,"says":["몸 풀자~"]},"stopwatch":{"label":"기록 재기","dur":3.0,"fps":2.0,"frames":[{"aR":"hold","eyes":"sparkle","prop":"stopwatch"},{"aR":"up","mouth":"grin","prop":"stopwatch"}],"says":["기록 단축했다!","몇 초 나왔어?"]},"water":{"label":"물 원샷","dur":3.0,"fps":1.5,"frames":[{"hy":-1.0,"aR":"up","eyes":"closed","mouth":"o","prop":"water"},{"aR":"hold","mouth":"smile","prop":"water"}],"events":[[2.0,"boing:캬~ 시원하다"]]},"lap":{"label":"운동장 한 바퀴","dur":5.0,"fps":8.0,"frames":[{"legs":"runA","aL":"out","aR":"hip","mouth":"smile"},{"legs":"walkB","aL":"hip","aR":"out"}],"move":200.0,"fx":"💨","fxEvery":0.4},"swim":{"label":"🏊 자유형","dur":5.0,"fps":3.0,"frames":[{"aL":"up","lying":true,"prop":"swimcap"},{"aR":"up","eyes":"closed","lying":true,"prop":"swimcap"}],"move":90.0,"w":0.9,"fx":"💦","fxEvery":0.3,"says":["수영 최고~"]},"backstroke":{"label":"배영","dur":5.0,"fps":2.0,"frames":[{"aL":"up","aR":"out","mouth":"smile","lying":true,"prop":"goggles"},{"aL":"out","aR":"up","mouth":"smile","lying":true,"prop":"goggles"}],"move":60.0,"fx":"💧","fxEvery":0.4},"dive":{"label":"다이빙","dur":3.0,"fps":1.0,"frames":[{"aL":"up","aR":"up","eyes":"closed","prop":"swimcap","sy":1.1}],"switchAt":1.2,"frames2":[{"aL":"up","aR":"up","eyes":"closed","lying":true,"prop":"swimcap"}],"events":[[0.1,"say:하나 둘 셋!"],[1.2,"boing:풍덩!"],[1.2,"shake"]]},"goggles":{"label":"수경 쓰기","dur":2.5,"fps":1.0,"frames":[{"aL":"up","aR":"up","mouth":"grin","prop":"goggles"}],"says":["준비 완료!"]},"floatWater":{"label":"물에 둥둥","dur":5.0,"fps":0.6,"frames":[{"aL":"out","aR":"out","eyes":"closed","mouth":"smile","lying":true},{"aL":"out","aR":"out","eyes":"closed","mouth":"o","lying":true}],"float":2.0,"fx":"💧","fxEvery":0.8,"says":["아~ 편하다"]},"splash":{"label":"물장구","dur":3.0,"fps":8.0,"frames":[{"aL":"up","aR":"out","eyes":"closed","mouth":"grin","lying":true},{"aL":"out","aR":"up","mouth":"open","lying":true}],"fx":"💦","fxEvery":0.15},"dryHair":{"label":"머리 털기","dur":2.5,"fps":1.0,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"grin"}],"jitter":true,"fx":"💧","fxEvery":0.2,"says":["부르르~"]},"dribble":{"label":"🏀 드리블","dur":4.0,"fps":4.0,"frames":[{"legs":"walkA","mouth":"smile","prop":"blackball"},{"legs":"walkB","aR":"hip","mouth":"smile","prop":"ballDown"}],"move":60.0,"w":0.8},"shoot":{"label":"슛!","dur":3.0,"fps":1.0,"frames":[{"hy":2.0,"by":13.0,"legs":"tuck","aL":"up","aR":"up","prop":"blackball"}],"switchAt":1.0,"frames2":[{"legs":"dangle","aL":"out","aR":"up","mouth":"grin"}],"hop":5.0,"hopRate":0.7,"events":[[1.0,"fl:🏀"],[2.0,"boing:골인!!"]]},"ballSpin":{"label":"손가락 공 돌리기","dur":3.5,"fps":1.0,"frames":[{"aR":"up","eyes":"sparkle","mouth":"smile","prop":"blackball"}],"fx":"🌀","fxEvery":0.5,"says":["이거 할 줄 알아?"]},"shoulderBall":{"label":"공 어깨에 들기","dur":3.0,"fps":1.0,"frames":[{"aL":"hip","aR":"up","eyes":"half","prop":"blackball"}],"says":["농구 한 판 할래?"]},"dodge":{"label":"피구 피하기","dur":3.0,"fps":6.0,"frames":[{"hx":-1.0,"aL":"out","aR":"out","eyes":"wide","rot":-10.0},{"hx":1.0,"aL":"out","aR":"out","mouth":"grin","rot":10.0}],"move":40.0,"says":["못 맞히지롱~"]},"longjump":{"label":"멀리뛰기","dur":3.0,"fps":2.0,"frames":[{"hy":3.0,"by":14.0,"ly":19.0,"legs":"tuck"},{"legs":"kick","aL":"up","aR":"up","mouth":"open"}],"hop":8.0,"hopRate":0.8,"move":90.0,"events":[[2.5,"boing:최고 기록!"]]},"jumprope":{"label":"줄넘기 2단 뛰기","dur":4.0,"fps":6.0,"frames":[{"legs":"tuck","aL":"out","aR":"out","mouth":"smile"},{"aL":"hip","aR":"hip"}],"hop":5.0,"hopRate":2.5,"events":[[0.5,"fl:1"],[1.0,"fl:2"],[1.5,"fl:3"],[2.0,"fl:4"],[2.5,"fl:5"],[3.0,"fl:6"]]},"situp":{"label":"윗몸일으키기","dur":4.0,"fps":2.0,"frames":[{"aL":"up","aR":"up","eyes":"angry","lying":true},{"hy":2,"by":14,"ly":20,"legs":"sit","aL":"hold","aR":"hold","mouth":"open"}],"events":[[1.0,"fl:1"],[2.0,"fl:2"],[3.0,"fl:3"]]},"handstand":{"label":"물구나무","dur":3.5,"fps":1.0,"frames":[{"legs":"dangle","aL":"up","aR":"up","mouth":"grin","rot":180.0,"pivot":11.0}],"says":["이 정도는 기본!"]},"cartwheel":{"label":"옆돌기","dur":2.5,"fps":1.0,"frames":[{"legs":"walkA","aL":"up","aR":"up","mouth":"grin"}],"roll":720.0,"move":120.0,"events":[[2.3,"say:짠!"]]},"pe":{"label":"체육 시간이다!","dur":3.0,"fps":4.0,"frames":[{"aL":"up","aR":"up","eyes":"sparkle","mouth":"open"},{"aL":"out","aR":"out","mouth":"grin"}],"hop":4.0,"hopRate":2.0,"says":["체육 시간 제일 좋아!"]},"pushup":{"label":"팔굽혀펴기","dur":4.0,"fps":2.0,"frames":[{"eyes":"angry","lying":true},{"eyes":"closed","mouth":"open","lying":true}],"events":[[1.0,"fl:1"],[2.0,"fl:2"],[3.0,"fl:3"]]},"badminton":{"label":"배드민턴 스매시","dur":3.0,"fps":3.0,"frames":[{"legs":"walkA","aR":"up","eyes":"angry"},{"legs":"kick","aR":"out","mouth":"open"}],"fx":"🏸","fxEvery":0.6,"says":["스매시!"]},"malatang":{"label":"🌶 마라탕 흡입","dur":5.0,"fps":2.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","mouth":"open","prop":"malatang"},{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"closed","mouth":"tongue","blush":true,"prop":"malatang"}],"w":1.2,"says":["마라탕은 진리!","하아~ 맵다! 근데 맛있어!"],"fx":"🌶","fxEvery":0.5},"malaLevel":{"label":"맵기 3단계!","dur":3.0,"fps":4.0,"frames":[{"aR":"up","eyes":"sparkle","mouth":"grin"},{"aR":"out","mouth":"open","blush":true}],"fx":"🔥","fxEvery":0.25,"says":["맵기 3단계로 주세요!"]},"malaOrder":{"label":"마라탕 주문","dur":3.5,"fps":2.0,"frames":[{"aR":"hold","eyes":"sparkle","mouth":"smile","prop":"phone"},{"aR":"hold","mouth":"grin","prop":"phone"}],"says":["꿔바로우도 추가!","넓적당면 많이~"]},"malaDream":{"label":"마라탕 생각","dur":3.5,"fps":0.6,"frames":[{"aR":"hold","eyes":"half","look":-1.0,"mouth":"o"},{"aR":"hold","eyes":"sparkle","mouth":"tongue"}],"fx":"💭","fxEvery":1.0,"says":["오늘도 마라탕 먹고 싶다…"]},"spicy":{"label":"매워서 헥헥","dur":3.0,"fps":6.0,"frames":[{"aR":"wave","eyes":"closed","mouth":"tongue","blush":true},{"aR":"up","eyes":"tear","mouth":"open","blush":true}],"fx":"🔥","fxEvery":0.3,"says":["물! 물!"]},"tanghulu":{"label":"탕후루","dur":3.5,"fps":2.0,"frames":[{"aR":"hold","mouth":"open","prop":"lollipop"},{"aR":"hold","eyes":"closed","mouth":"smile","prop":"lollipop"}],"says":["바삭바삭~"]},"cola":{"label":"콜라","dur":3.0,"fps":2.0,"frames":[{"aR":"hold","eyes":"closed","mouth":"o","prop":"cola"},{"aR":"hold","mouth":"smile","prop":"cola"}],"events":[[2.2,"boing:캬~"]]},"cupramen":{"label":"컵라면","dur":4.0,"fps":2.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","mouth":"open","prop":"cupramen"},{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"closed","prop":"cupramen"}],"fx":"~","fxEvery":0.6,"fxKind":"z"},"icecream":{"label":"아이스크림","dur":3.5,"fps":2.0,"frames":[{"aR":"hold","mouth":"tongue","prop":"icecream"},{"aR":"hold","eyes":"closed","mouth":"smile","prop":"icecream"}]},"laugh":{"label":"😆 예쁘게 웃기","dur":3.0,"fps":3.0,"frames":[{"eyes":"closed","mouth":"grin","blush":true},{"eyes":"sparkle","mouth":"smile","blush":true}],"w":0.9,"fx":"✨","fxEvery":0.5,"says":["히히히!","아 웃겨 ㅋㅋㅋ"]},"okCall":{"label":"ㅇㅋ 콜!","dur":2.5,"fps":1.0,"frames":[{"aR":"up","eyes":"wink","mouth":"grin"}],"says":["ㅇㅋ 콜!","좋아, 가자!"]},"shrug":{"label":"뭐 어때~","dur":2.5,"fps":2.0,"frames":[{"aL":"out","aR":"out","mouth":"smile","sy":1.04},{"mouth":"smile"}],"says":["뭐 어때~","괜찮아 괜찮아"]},"leader":{"label":"나만 믿어!","dur":3.0,"fps":1.0,"frames":[{"aL":"hip","aR":"hip","mouth":"grin","sy":1.06}],"says":["나만 믿어!","언니가 해줄게!"],"fx":"💪","fxEvery":0.7},"cheerWoo":{"label":"정우 응원","dur":3.0,"fps":4.0,"frames":[{"aL":"up","aR":"out","mouth":"open"},{"aL":"out","aR":"up","mouth":"grin"}],"says":["정우야 힘내!","잘한다 정우!"]},"thumbsup":{"label":"엄지척","dur":2.5,"fps":1.0,"frames":[{"aR":"up","eyes":"wink","mouth":"grin"}],"says":["👍 최고!"]},"hairTie":{"label":"머리 묶기","dur":3.0,"fps":2.0,"frames":[{"aL":"up","aR":"up","eyes":"closed"},{"aL":"up","aR":"up","mouth":"o"}],"says":["뛰기 전에 머리 묶고!"]},"bagCheck":{"label":"크로스백 정리","dur":2.5,"fps":2.0,"frames":[{"hy":1.0,"by":13.0,"aL":"hold","aR":"hold","look":-1.0},{"hy":1.0,"by":13.0,"aL":"hold","aR":"hold"}],"says":["폰, 지갑, 다 있고…"]},"coolWalk":{"label":"시원시원 걷기","dur":4.0,"fps":6.0,"frames":[{"legs":"walkA","aR":"hip","mouth":"smile"},{"legs":"walkB","aR":"hip"}],"move":90.0,"fx":"♪","fxEvery":0.8},"highfive":{"label":"하이파이브","dur":2.5,"fps":2.0,"frames":[{"aR":"up","mouth":"grin"},{"aR":"wave","mouth":"grin"}],"events":[[0.8,"boing:짝!"]]},"angry":{"label":"야!","dur":2.5,"fps":4.0,"frames":[{"aL":"hip","aR":"hip","eyes":"angry","mouth":"open"}],"jitter":true,"says":["야! 유정우!","장난치지 마!"]},"pout":{"label":"살짝 삐짐","dur":3.0,"fps":1.0,"frames":[{"hx":-1.0,"aL":"cross","aR":"cross","look":-1.0,"mouth":"pout"}],"says":["흥."]},"wink":{"label":"윙크","dur":2.5,"fps":1.0,"frames":[{"aR":"wave","eyes":"wink","mouth":"smile","blush":true}],"says":["😉"]},"peace":{"label":"브이","dur":2.5,"fps":1.0,"frames":[{"aL":"hip","aR":"wave","eyes":"closed","mouth":"grin"}],"says":["✌"]},"selfie":{"label":"셀카","dur":3.0,"fps":2.0,"frames":[{"aR":"up","eyes":"wink","mouth":"grin","prop":"phone"},{"aR":"up","mouth":"smile","prop":"phone"}],"events":[[1.2,"flash"],[1.2,"fl:찰칵!"]]},"phone":{"label":"폰 보기","dur":4.0,"fps":1.5,"frames":[{"hy":1.0,"by":13.0,"aR":"hold","prop":"phone"},{"hy":1.0,"by":13.0,"aR":"hold","eyes":"closed","mouth":"grin","prop":"phone"}],"fx":"ㅋ","fxEvery":0.8},"music":{"label":"음악 들으며","dur":4.0,"fps":2.5,"frames":[{"eyes":"closed","mouth":"smile","rot":-3.0},{"eyes":"closed","mouth":"smile","rot":3.0}],"fx":"♪","fxEvery":0.4},"kpop":{"label":"케이팝 댄스","dur":4.0,"fps":5.0,"frames":[{"hx":-1.0,"legs":"walkA","aL":"up","aR":"hip","mouth":"smile"},{"hx":1.0,"legs":"walkB","aL":"hip","aR":"up","mouth":"grin"}],"fx":"♪","fxEvery":0.35},"spin":{"label":"빙글빙글","dur":3.0,"fps":1.0,"frames":[{"aL":"out","aR":"out","eyes":"closed","mouth":"grin"}],"spin":14.0,"events":[[2.9,"fl:💫"]]},"trip":{"label":"넘어져도 괜찮아","dur":3.0,"fps":6.0,"frames":[{"legs":"walkA"},{"legs":"walkB"}],"move":120.0,"switchAt":1.0,"frames2":[{"eyes":"wide","mouth":"open","lying":true}],"events":[[1.0,"boing:꽈당!"],[2.0,"say:툭툭~ 괜찮아!"]]},"sneeze":{"label":"에취","dur":2.5,"fps":2.0,"frames":[{"hy":-1.0,"by":11.0,"eyes":"closed","mouth":"o"}],"switchAt":1.4,"frames2":[{"hy":2.0,"by":13.0,"eyes":"closed","mouth":"open","sx":1.1,"sy":0.88}],"events":[[1.4,"boing:에취!"]]},"yawn":{"label":"하품","dur":3.0,"fps":1.0,"frames":[{"aR":"up","eyes":"closed","mouth":"open"}],"says":["하암~"]},"nap":{"label":"운동 후 꿀잠","dur":7.0,"fps":0.5,"frames":[{"eyes":"closed","mouth":"smile","lying":true},{"eyes":"closed","mouth":"o","lying":true}],"fx":"z","fxEvery":0.8,"fxKind":"z"},"think":{"label":"생각 중","dur":3.0,"fps":0.7,"frames":[{"aR":"hold","look":-1.0},{"aR":"hold","eyes":"closed"}],"fx":"💭","fxEvery":1.2},"clap":{"label":"박수","dur":2.5,"fps":6.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed","mouth":"grin"},{"aL":"out","aR":"out","mouth":"grin"}],"fx":"👏","fxEvery":0.35},"flag":{"label":"태극기 흔들기","dur":3.0,"fps":3.0,"frames":[{"aR":"up","mouth":"open","prop":"flag"},{"aR":"wave","mouth":"grin","prop":"flag"}],"says":["대한민국 화이팅!"]},"bow":{"label":"인사","dur":2.5,"fps":1.2,"frames":[{"mouth":"smile"},{"hy":3.0,"by":13.0,"eyes":"closed","mouth":"smile","sy":0.92}],"says":["안녕하세요!"]},"robot":{"label":"로봇 춤","dur":3.5,"fps":3.0,"frames":[{"legs":"walkA","aL":"out"},{"hx":1.0,"legs":"walkB","aR":"out"},{"aL":"up","aR":"up"}],"says":["삐빅!"]},"frog":{"label":"개구리 점프","dur":3.0,"fps":2.0,"frames":[{"hy":3.0,"by":14.0,"ly":19.0,"legs":"tuck"},{"legs":"dangle","aL":"up","aR":"up","mouth":"open"}],"hop":7.0,"hopRate":1.3,"move":60.0},"airplane":{"label":"비행기 달리기","dur":3.0,"fps":8.0,"frames":[{"legs":"runA","aL":"out","aR":"out","mouth":"open","rot":-8.0},{"legs":"walkB","aL":"out","aR":"out","rot":-8.0}],"move":220.0,"fx":"✈","fxEvery":0.5},"hide":{"label":"숨바꼭질","dur":5.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed"}],"switchAt":3.5,"frames2":[{"aR":"out","eyes":"sparkle","mouth":"grin"}],"events":[[0.2,"say:하나… 둘… 셋…"],[3.5,"boing:찾았다!"]]},"trophy":{"label":"트로피","dur":3.0,"fps":1.5,"frames":[{"aR":"up","eyes":"closed","mouth":"grin","prop":"trophy"},{"aR":"up","mouth":"open","prop":"trophy"}],"fx":"🏆","fxEvery":0.5,"says":["우승이다!"]}}
+;
+const WOO_MOVES={"frontKick":{"label":"🥋 앞차기","dur":2.5,"fps":3.0,"frames":[{"aL":"hip","aR":"hip","eyes":"angry","prop":"dobok"},{"legs":"kick","aL":"out","aR":"hip","eyes":"angry","mouth":"open","prop":"dobok"}],"w":1.0,"events":[[0.4,"fl:얍!"],[1.1,"fl:얍!"],[1.8,"fl:얍!"]]},"sideKick":{"label":"옆차기","dur":2.5,"fps":2.0,"frames":[{"legs":"walkA","aL":"out","eyes":"angry","prop":"dobok","rot":-10.0},{"legs":"kick","aR":"out","eyes":"angry","mouth":"open","prop":"dobok","rot":-20.0}],"events":[[0.6,"boing:하앗!"]]},"spinKick":{"label":"뒤후려차기","dur":2.5,"fps":1.0,"frames":[{"legs":"kick","aL":"out","aR":"out","eyes":"angry","mouth":"open","prop":"dobok"}],"spin":12.0,"events":[[2.0,"boing:얍!!"]]},"jumpKick":{"label":"뛰어 차기","dur":3.0,"fps":2.0,"frames":[{"legs":"tuck","aL":"up","aR":"out","eyes":"angry","prop":"dobok"},{"legs":"kick","aL":"out","aR":"up","mouth":"open","prop":"dobok"}],"hop":9.0,"hopRate":0.8,"events":[[0.6,"boing:이얍!"]]},"breakBoard":{"label":"💥 격파 (화면 깨기)","dur":3.5,"fps":1.0,"frames":[{"aL":"hip","aR":"hold","eyes":"angry","prop":"board"}],"w":0.8,"switchAt":1.5,"frames2":[{"legs":"kick","aL":"out","aR":"out","eyes":"angry","mouth":"open","prop":"dobok","sx":1.2,"sy":1.2}],"events":[[0.1,"say:송판 격파 간다!"],[1.5,"crash"],[1.5,"boing:격파!!"],[2.6,"say:앗… 너무 셌나?"]]},"poomsae":{"label":"품새","dur":5.0,"fps":1.5,"frames":[{"legs":"walkA","aL":"out","aR":"hip","eyes":"angry","prop":"dobok"},{"legs":"walkB","aL":"hip","aR":"out","eyes":"angry","prop":"dobok"},{"legs":"kick","aL":"up","eyes":"angry","prop":"dobok"}],"says":["태극 8장!"],"fx":"얍","fxEvery":1.2},"sparring":{"label":"겨루기","dur":3.5,"fps":6.0,"frames":[{"legs":"walkA","aL":"hold","aR":"out","eyes":"angry","prop":"dobok"},{"legs":"walkB","aL":"out","aR":"hold","eyes":"angry","prop":"dobok"}],"jitter":true,"says":["덤벼!"]},"blackBelt":{"label":"3단 검은띠 자랑","dur":3.0,"fps":1.0,"frames":[{"aL":"hip","aR":"hip","mouth":"grin","prop":"dobok","sy":1.06}],"says":["나 태권도 3단이야!","검은띠 멋있지?"],"fx":"✨","fxEvery":0.6},"goldMedal":{"label":"🥇 금메달","dur":3.0,"fps":1.5,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"grin","prop":"medal"},{"aL":"hip","aR":"hip","mouth":"smile","prop":"medal"}],"w":0.9,"says":["금메달 땄다!","대회 1등!"],"fx":"🏅","fxEvery":0.5},"kiai":{"label":"기합","dur":2.0,"fps":1.0,"frames":[{"aL":"hip","aR":"hip","eyes":"angry","mouth":"open","prop":"dobok","sy":1.08}],"events":[[0.2,"boing:얍!!!"],[0.2,"shake"]]},"tkdBow":{"label":"차렷! 경례!","dur":3.0,"fps":1.0,"frames":[{"eyes":"angry","prop":"dobok"}],"switchAt":1.3,"frames2":[{"hy":3.0,"by":13.0,"eyes":"closed","prop":"dobok","sy":0.92}],"events":[[0.1,"say:차렷!"],[1.3,"say:경례!"]]},"punch":{"label":"지르기","dur":2.5,"fps":6.0,"frames":[{"hx":1.0,"aL":"hold","aR":"out","eyes":"angry","prop":"dobok"},{"aL":"out","aR":"hold","eyes":"angry","prop":"dobok"}],"fx":"팍!","fxEvery":0.35},"stance":{"label":"기마 자세","dur":3.0,"fps":1.0,"frames":[{"hy":2.0,"by":13.0,"legs":"walkA","aL":"hold","aR":"hold","eyes":"angry","prop":"dobok"}],"jitter":true,"says":["버틴다…!"]},"dobokOn":{"label":"도복 입기","dur":2.5,"fps":1.0,"frames":[{"aL":"up","aR":"up","eyes":"closed"}],"switchAt":1.0,"frames2":[{"aL":"hip","aR":"hip","mouth":"grin","prop":"dobok"}],"events":[[1.0,"boing:변신!"]]},"mcIntro":{"label":"🎤 MC 정우","dur":4.0,"fps":2.0,"frames":[{"aL":"out","aR":"hold","mouth":"open","prop":"mic"},{"aL":"up","aR":"hold","mouth":"grin","prop":"mic"}],"w":1.0,"says":["안녕하십니까~ MC 정우입니다!","여러분 반갑습니다~!"]},"mcHype":{"label":"소리 질러~!","dur":3.0,"fps":4.0,"frames":[{"aL":"up","aR":"hold","mouth":"open","prop":"mic"},{"aL":"out","aR":"up","mouth":"grin","prop":"mic"}],"hop":3.0,"hopRate":2.0,"says":["소리 질러~!!","다 같이 박수~!"],"fx":"🎉","fxEvery":0.5},"mcCount":{"label":"카운트다운","dur":4.0,"fps":1.0,"frames":[{"aL":"up","aR":"hold","mouth":"open","prop":"mic"}],"events":[[0.3,"boing:3!"],[1.3,"boing:2!"],[2.3,"boing:1!"],[3.3,"boing:시작~!"]]},"mcJoke":{"label":"드립 치기","dur":3.0,"fps":2.0,"frames":[{"aR":"hold","eyes":"wink","mouth":"grin","prop":"mic"},{"aR":"hold","eyes":"closed","mouth":"open","prop":"mic"}],"says":["빵 터졌죠? ㅋㅋ","제가 좀 웃기죠?"],"fx":"ㅋ","fxEvery":0.5},"mcRap":{"label":"랩 한 소절","dur":4.0,"fps":4.0,"frames":[{"legs":"walkA","aL":"out","aR":"hold","mouth":"open","prop":"mic","rot":-4.0},{"legs":"walkB","aL":"hip","aR":"hold","mouth":"o","prop":"mic","rot":4.0}],"says":["요! 요! 정우 왔다~","체크 원 투~"],"fx":"♪","fxEvery":0.35},"mcInterview":{"label":"인터뷰","dur":3.5,"fps":1.0,"frames":[{"aR":"out","mouth":"smile","prop":"mic"}],"says":["지금 기분이 어떠세요?","한 말씀 부탁드립니다!"]},"mcApplause":{"label":"박수 유도","dur":3.0,"fps":3.0,"frames":[{"aL":"up","aR":"hold","mouth":"open","prop":"mic"},{"aL":"out","aR":"hold","mouth":"grin","prop":"mic"}],"fx":"👏","fxEvery":0.3,"says":["박수 주세요~!"]},"mcBow":{"label":"MC 마무리 인사","dur":3.0,"fps":1.0,"frames":[{"aR":"hold","mouth":"smile","prop":"mic"}],"switchAt":1.5,"frames2":[{"hy":3.0,"by":13.0,"aR":"hold","eyes":"closed","prop":"mic","sy":0.92}],"says":["지금까지 MC 정우였습니다!"]},"sunglasses":{"label":"😎 선글라스","dur":3.0,"fps":1.0,"frames":[{"aR":"up","mouth":"grin","prop":"sunglasses"}],"says":["멋있지?","나 좀 멋있는 듯"],"fx":"✨","fxEvery":0.6},"coolPose":{"label":"선글라스 폼","dur":3.0,"fps":1.0,"frames":[{"aL":"hip","aR":"hip","mouth":"smile","prop":"sunglasses","rot":-5.0}],"says":["폼 미쳤다."]},"speech":{"label":"말 잘하는 정우","dur":4.0,"fps":3.0,"frames":[{"aR":"out","mouth":"open"},{"aL":"out","aR":"hip","mouth":"smile"},{"aR":"up","mouth":"open"}],"says":["자, 제 말 좀 들어보세요!","결론부터 말하면요~"]},"beef":{"label":"🥩 소고기 구이","dur":5.0,"fps":2.0,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"sparkle","mouth":"open","prop":"beef"},{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"closed","blush":true,"prop":"beef"}],"w":1.1,"says":["소고기 최고!!","치익~ 맛있겠다"],"fx":"🥩","fxEvery":0.8},"beefDream":{"label":"소고기 먹고 싶다","dur":3.5,"fps":0.6,"frames":[{"aR":"hold","eyes":"half","look":-1.0,"mouth":"o"},{"aR":"hold","eyes":"sparkle","mouth":"tongue"}],"fx":"💭","fxEvery":1.0,"says":["오늘 저녁 소고기면 좋겠다…"]},"ramen":{"label":"🍜 라면 후루룩","dur":5.0,"fps":2.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","mouth":"open","prop":"cupramen"},{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"closed","blush":true,"prop":"cupramen"}],"w":1.1,"fx":"~","fxEvery":0.6,"fxKind":"z","says":["라면은 못 참지!","후루룩~"]},"ramenCook":{"label":"라면 끓이기","dur":4.0,"fps":2.0,"frames":[{"aR":"hold","prop":"pot"},{"aR":"hold","eyes":"closed","prop":"pot"}],"fx":"~","fxEvery":0.5,"fxKind":"z","says":["물 550ml, 4분 30초!"]},"brothShot":{"label":"국물 원샷","dur":3.0,"fps":1.0,"frames":[{"hy":1.0,"by":14,"ly":20,"legs":"sit","aR":"up","eyes":"closed","mouth":"o","prop":"cupramen"}],"events":[[2.0,"boing:캬~!"]]},"full":{"label":"배부르다","dur":3.5,"fps":1.0,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aL":"hold","aR":"hold","eyes":"closed","mouth":"smile","blush":true}],"says":["배 터지겠다~"],"fx":"💤","fxEvery":1.0},"cola":{"label":"콜라","dur":3.0,"fps":2.0,"frames":[{"aR":"hold","eyes":"closed","mouth":"o","prop":"cola"},{"aR":"hold","mouth":"smile","prop":"cola"}],"events":[[2.2,"boing:꺼억~"]]},"chips":{"label":"과자","dur":3.5,"fps":3.0,"frames":[{"aR":"hold","mouth":"open","prop":"chips"},{"aR":"hold","eyes":"closed","prop":"chips"}],"fx":"바삭","fxEvery":0.5},"dash":{"label":"💨 뛰어다니기","dur":3.5,"fps":12.0,"frames":[{"hx":1.0,"legs":"runA","aL":"out","aR":"hip","mouth":"grin"},{"hx":1.0,"legs":"walkB","aL":"hip","aR":"out","mouth":"open"}],"move":260.0,"w":1.0,"fx":"💨","fxEvery":0.25,"says":["야호~!","나 잡아봐라!"]},"dribble":{"label":"🏀 농구 드리블","dur":4.0,"fps":4.0,"frames":[{"legs":"walkA","mouth":"smile","prop":"basketball"},{"legs":"walkB","aR":"hip","mouth":"smile","prop":"ballDown"}],"move":60.0,"w":0.8},"shoot":{"label":"레이업 슛","dur":3.0,"fps":1.0,"frames":[{"hy":2.0,"by":13.0,"legs":"tuck","aL":"up","aR":"up","prop":"basketball"}],"switchAt":1.0,"frames2":[{"legs":"kick","aL":"out","aR":"up","mouth":"grin"}],"hop":6.0,"hopRate":0.7,"events":[[1.0,"fl:🏀"],[2.0,"boing:골인!!"]]},"ballHold":{"label":"한 손 공 들기","dur":3.0,"fps":1.0,"frames":[{"aR":"out","eyes":"half","mouth":"smile","prop":"basketball"}],"says":["한 판 붙자!"]},"soccer":{"label":"축구 슛","dur":2.5,"fps":2.0,"frames":[{"legs":"walkA","aL":"out"},{"legs":"kick","aL":"out","aR":"out","mouth":"open"}],"events":[[0.6,"fl:⚽"],[1.5,"boing:골~!"]]},"tag":{"label":"술래잡기","dur":3.5,"fps":10.0,"frames":[{"legs":"runA","aL":"out","aR":"out","eyes":"sparkle","mouth":"open"},{"legs":"walkB","aL":"out","aR":"out","mouth":"grin"}],"move":230.0,"says":["술래 누구야~!"]},"frog":{"label":"개구리 점프","dur":3.0,"fps":2.0,"frames":[{"hy":3.0,"by":14.0,"ly":19.0,"legs":"tuck"},{"legs":"dangle","aL":"up","aR":"up","mouth":"open"}],"hop":7.0,"hopRate":1.3,"move":70.0},"cartwheel":{"label":"데굴데굴","dur":2.5,"fps":1.0,"frames":[{"legs":"tuck","aL":"up","aR":"up","eyes":"closed","mouth":"grin"}],"roll":720.0,"move":130.0},"handstand":{"label":"물구나무","dur":3.0,"fps":1.0,"frames":[{"legs":"dangle","aL":"up","aR":"up","mouth":"grin","rot":180.0,"pivot":11.0}],"says":["거꾸로 세상!"]},"pushup":{"label":"팔굽혀펴기","dur":4.0,"fps":2.0,"frames":[{"eyes":"angry","lying":true},{"eyes":"closed","mouth":"open","lying":true}],"events":[[1.0,"fl:1"],[2.0,"fl:2"],[3.0,"fl:3"]]},"jumprope":{"label":"줄넘기","dur":3.5,"fps":4.0,"frames":[{"legs":"tuck","aL":"out","aR":"out","mouth":"smile"},{"aL":"hip","aR":"hip"}],"hop":4.0,"hopRate":2.0,"events":[[0.5,"fl:1"],[1.0,"fl:2"],[1.5,"fl:3"],[2.0,"fl:4"]]},"airplane":{"label":"비행기 놀이","dur":3.0,"fps":8.0,"frames":[{"legs":"runA","aL":"out","aR":"out","mouth":"open","rot":-8.0},{"legs":"walkB","aL":"out","aR":"out","rot":-8.0}],"move":200.0,"fx":"✈","fxEvery":0.5},"dino":{"label":"공룡 흉내","dur":3.0,"fps":2.0,"frames":[{"aL":"hold","aR":"hold","eyes":"angry","mouth":"open"}],"jitter":true,"events":[[0.2,"boing:크아앙!"]]},"laugh":{"label":"😄 잘 웃기","dur":3.0,"fps":5.0,"frames":[{"aL":"hip","aR":"hip","eyes":"closed","mouth":"grin"},{"hy":1.0,"by":13.0,"aL":"hip","aR":"hip","eyes":"closed","mouth":"open"}],"w":0.9,"fx":"ㅋ","fxEvery":0.3,"says":["ㅋㅋㅋㅋ","아 웃겨!"]},"flex":{"label":"💪 남자답게","dur":3.0,"fps":1.5,"frames":[{"aL":"up","aR":"up","eyes":"angry","mouth":"grin","sx":1.08},{"aL":"up","aR":"up","eyes":"wink","mouth":"grin","sx":1.1}],"says":["남자는 힘이지!","내가 지켜줄게!"]},"thumbsup":{"label":"엄지척","dur":2.5,"fps":1.0,"frames":[{"aR":"up","eyes":"wink","mouth":"grin"}],"says":["👍 오케이!"]},"cheerSia":{"label":"시아 누나 응원","dur":3.0,"fps":4.0,"frames":[{"aL":"up","aR":"out","mouth":"open"},{"aL":"out","aR":"up","mouth":"grin"}],"says":["시아 누나 파이팅!","누나 빠르다!"]},"salute":{"label":"충성","dur":2.5,"fps":1.0,"frames":[{"aR":"wave","eyes":"angry","sy":1.04}],"says":["충성!"]},"proud":{"label":"뿌듯","dur":3.0,"fps":1.0,"frames":[{"aL":"hip","aR":"hip","eyes":"closed","mouth":"grin","sy":1.05}],"says":["역시 나야~"],"fx":"⭐","fxEvery":0.6},"bigWave":{"label":"힘차게 인사","dur":2.5,"fps":4.0,"frames":[{"aR":"wave","mouth":"grin"},{"aR":"up","mouth":"open"}],"says":["안녕하세요~!!"]},"clap":{"label":"박수","dur":2.5,"fps":6.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed","mouth":"grin"},{"aL":"out","aR":"out","mouth":"grin"}],"fx":"👏","fxEvery":0.35},"highfive":{"label":"하이파이브","dur":2.5,"fps":2.0,"frames":[{"aR":"up","mouth":"grin"},{"aR":"wave","mouth":"grin"}],"events":[[0.8,"boing:짝!"]]},"kpop":{"label":"댄스","dur":4.0,"fps":5.0,"frames":[{"hx":-1.0,"legs":"walkA","aL":"up","aR":"hip","mouth":"grin"},{"hx":1.0,"legs":"walkB","aL":"hip","aR":"up","mouth":"open"}],"fx":"♪","fxEvery":0.35},"robot":{"label":"로봇 춤","dur":3.5,"fps":3.0,"frames":[{"legs":"walkA","aL":"out"},{"hx":1.0,"legs":"walkB","aR":"out"},{"aL":"up","aR":"up"}],"says":["삐빅! 정우봇!"]},"spin":{"label":"빙글빙글","dur":3.0,"fps":1.0,"frames":[{"aL":"out","aR":"out","eyes":"closed","mouth":"grin"}],"spin":14.0,"events":[[2.9,"fl:💫"]]},"game":{"label":"게임하기","dur":5.0,"fps":3.0,"frames":[{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"sparkle","prop":"phone"},{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"hold","mouth":"open","prop":"phone"}],"says":["한 판만 더!"]},"selfie":{"label":"셀카","dur":3.0,"fps":2.0,"frames":[{"aR":"up","eyes":"wink","mouth":"grin","prop":"phone"},{"aR":"up","mouth":"smile","prop":"phone"}],"events":[[1.2,"flash"],[1.2,"fl:찰칵!"]]},"trip":{"label":"꽈당","dur":3.0,"fps":6.0,"frames":[{"legs":"walkA"},{"legs":"walkB"}],"move":120.0,"switchAt":1.0,"frames2":[{"eyes":"wide","mouth":"open","lying":true}],"events":[[1.0,"boing:꽈당!"],[2.0,"say:하나도 안 아파!"]]},"shy":{"label":"부끄","dur":2.5,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed","look":-1.0,"mouth":"smile","blush":true}],"says":["헤헤…"]},"angry":{"label":"욱!","dur":2.5,"fps":4.0,"frames":[{"aL":"hip","aR":"hip","eyes":"angry","mouth":"open"}],"jitter":true,"says":["아 진짜!","누나 반칙이야!"]},"think":{"label":"생각 중","dur":3.0,"fps":0.7,"frames":[{"aR":"hold","look":-1.0},{"aR":"hold","eyes":"closed"}],"fx":"💭","fxEvery":1.2},"idea":{"label":"번뜩!","dur":2.5,"fps":0.7,"frames":[{"aR":"hold","look":-1.0}],"switchAt":1.2,"frames2":[{"aR":"up","eyes":"sparkle","mouth":"grin"}],"events":[[1.2,"boing:💡 좋은 생각!"]]},"sneeze":{"label":"에취","dur":2.5,"fps":2.0,"frames":[{"hy":-1.0,"by":11.0,"eyes":"closed","mouth":"o"}],"switchAt":1.4,"frames2":[{"hy":2.0,"by":13.0,"eyes":"closed","mouth":"open","sx":1.1,"sy":0.88}],"events":[[1.4,"boing:에취!"]]},"hiccup":{"label":"딸꾹질","dur":3.5,"fps":1.0,"frames":[{"eyes":"wide","mouth":"o"}],"hop":4.0,"hopRate":0.9,"events":[[0.5,"fl:딸꾹!"],[1.6,"fl:딸꾹!"],[2.7,"fl:딸꾹!"]]},"yawn":{"label":"하품","dur":3.0,"fps":1.0,"frames":[{"aR":"up","eyes":"closed","mouth":"open"}],"says":["하아암~"]},"nap":{"label":"뻗어서 자기","dur":7.0,"fps":0.5,"frames":[{"aL":"out","aR":"up","eyes":"closed","mouth":"o","lying":true},{"aL":"up","aR":"out","eyes":"closed","lying":true}],"fx":"z","fxEvery":0.8,"fxKind":"z","events":[[3.0,"say:음냐… 소고기…"]]},"flag":{"label":"태극기 흔들기","dur":3.0,"fps":3.0,"frames":[{"aR":"up","mouth":"open","prop":"flag"},{"aR":"wave","mouth":"grin","prop":"flag"}],"says":["대한민국!"]},"trophy":{"label":"트로피 번쩍","dur":3.0,"fps":1.5,"frames":[{"aR":"up","eyes":"closed","mouth":"grin","prop":"trophy"},{"aR":"up","mouth":"open","prop":"trophy"}],"fx":"🏆","fxEvery":0.5,"says":["챔피언!"]}}
+;
+const DEFS={
+ sia:{id:'sia',name:'시아',tapSay:'ㅇㅋ 콜!',sleepMin:7,sleepMax:10,scale:.92,moves:SIA_MOVES,draw:(g,p)=>drawSia(g,p),
+  specials:[['idle','가만히'],['walk','걷기'],['run','달리기'],['jump','점프'],['sit','앉기'],['sleep','자기'],['wave','손인사'],['dance','춤'],['look','두리번'],['stretch','기지개']]},
+ woo:{id:'woo',name:'정우',tapSay:'안녕하십니까~ 정우입니다!',sleepMin:6,sleepMax:9,scale:.84,moves:WOO_MOVES,draw:(g,p)=>drawWoo(g,p),
+  specials:[['idle','가만히'],['walk','걷기'],['run','달리기'],['jump','점프'],['sit','앉기'],['sleep','자기'],['wave','손인사'],['dance','춤'],['look','두리번'],['stretch','기지개']]}
+};
+
+const menuOf=d=>[...d.specials,...Object.entries(d.moves).filter(([k,m])=>!m.spicy||spicyOn).map(([k,m])=>[k,(m.chicken?'🐔 ':'')+m.label])];
+
+/* 저장 (이 기기 브라우저에만) */
+const store={get(k,v){try{const s=localStorage.getItem(STORE+k);return s===null?v:JSON.parse(s)}catch(e){return v}},set(k,v){try{localStorage.setItem(STORE+k,JSON.stringify(v))}catch(e){}}};
+soundOn=store.get('sound',true);spicyOn=store.get('spicy',false);
+
+/* 홈 화면 */
+const APPS=[['📞','전화','#4cd07d'],['💬','메시지','#ffcd3c'],['📷','카메라','#5a6270'],['🖼️','갤러리','#ff7aa8'],['🌐','인터넷','#5b8cff'],['🎵','음악','#ff6b6b'],['📅','캘린더','#ffffff'],['🗺️','지도','#7fd6c2'],['☀️','날씨','#6fb8ff'],['🛒','쇼핑','#ff9f43'],['🎮','게임','#8e6cff'],['⚙️','설정','#9aa3b5'],['📝','메모','#ffe28a'],['⏰','시계','#3d3d5c'],['📚','공부','#5fc6a0'],['🚲','자전거','#f06292']];
+const grid=document.getElementById('grid'),dock=document.getElementById('dock');
+grid.innerHTML=APPS.map(a=>`<div class="app"><div class="ibox" style="background:${a[2]}">${a[0]}</div><span>${a[1]}</span></div>`).join('');
+dock.innerHTML=[['📞','#4cd07d'],['💬','#ffcd3c'],['🌐','#5b8cff'],['📷','#5a6270']].map(a=>`<div class="ibox" style="background:${a[1]}">${a[0]}</div>`).join('');
+const clock=document.getElementById('clock'),dateEl=document.getElementById('date');
+function tick(){const d=new Date();clock.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');dateEl.textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`}
+tick();setInterval(tick,10000);
+
+function computePlats(){plats=[];W=innerWidth;H=innerHeight;
+ grid.querySelectorAll('.ibox').forEach(el=>{const r=el.getBoundingClientRect();if(r.bottom<H-80&&r.height>0)plats.push({x1:r.left+2,x2:r.right-2,y:r.top,el})});
+ const d=dock.getBoundingClientRect();floorP={x1:-1e5,x2:1e5,y:d.top,floor:true,el:dock};plats.push(floorP);minX=12*SC;maxX=W-12*SC}
+window.ensureAudio=()=>{if(!actx){try{actx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(actx&&actx.state==='suspended')actx.resume()};
+
+/* 펫 관리 */
+const pets={};
+function syncPets(){for(const id of IDS){const on=store.get('on_'+id,true);
+  if(on&&!pets[id]){const p=new Pet(DEFS[id]);p.spawn(IDS.indexOf(id)?.7:.3);pets[id]=p}
+  else if(!on&&pets[id]){pets[id].remove();delete pets[id]}}
+hook();
+ renderPanel()}
+
+/* 시아 + 정우 상호작용 */
+function hook(){if(pets.woo)pets.woo.onCrash=cx=>pets.sia&&pets.sia.interact('angry',cx,'야! 유정우! 화면 깨졌잖아!')}
+let interCool=3;
+function interactions(dt){const s=pets.sia,w=pets.woo;if(!s||!w)return;interCool-=dt;if(interCool>0)return;if(s.state==='away'||w.state==='away')return;
+ if(Math.abs(s.x-w.x)>13*SC||Math.abs(s.y-w.y)>18*SC)return;interCool=7;
+ if(['air','drag'].includes(s.state)||['air','drag'].includes(w.state)||s.act==='run'||w.act==='run'){s.bump(w.x);w.bump(s.x);s.say('앗 미안!',1.4);w.say('괜찮아 누나!',1.4);return}
+ if(!s.canInteract||!w.canInteract){interCool=2;return}
+ const mid=(s.x+w.x)/2,top=Math.min(s.y,w.y)-24*SC;
+ switch(fl(Math.random()*7)){
+  case 0:s.interact('sprint',w.x,'달리기 시합 할래?');w.interact('dash',s.x,'좋아! 누가 이기나 보자!');s.sayLater('내가 이겼지~ ㅋㅋ',2.6);w.sayLater('누나 너무 빨라!!',3.2);break;
+  case 1:s.interact('shoot',w.x,'패스!');w.interact('ballHold',s.x,'나이스 패스!');floatText('🏀',mid,top,'boing');break;
+  case 2:s.interact('highfive',w.x,'하이파이브!');w.interact('highfive',s.x,null);floatText('짝!',mid,top,'boing');sfx.pop();break;
+  case 3:s.interact('malaDream',w.x,'마라탕 먹자!');w.interact('beefDream',s.x,'아니야 소고기 먹자!');s.sayLater('…둘 다 먹자!',2.4);w.sayLater('콜!!',3);break;
+  case 4:w.interact('mcInterview',s.x,'박시아 선수, 우승 소감은요?');s.interact('laugh',w.x,null);s.sayLater('히히 다 같이 열심히 했어요!',1.6);break;
+  case 5:w.interact('frontKick',s.x,'누나 내 앞차기 봐!');s.interact('cheerWoo',w.x,'오~ 태권도 3단!');break;
+  default:s.interact('okCall',w.x,'정우야 편의점 갈래?');w.interact('thumbsup',s.x,'라면 사자!')}}
+
+/* 메뉴 */
+const panel=document.getElementById('panel');let target=store.get('target',IDS[0]);
+window.openMenu=id=>{target=id;renderPanel();panel.classList.add('on')};
+document.getElementById('menuBtn').onclick=()=>{renderPanel();panel.classList.toggle('on')};
+function renderPanel(){
+ document.getElementById('toggles').innerHTML=IDS.map(id=>`<button data-t="${id}" class="${pets[id]?'on':'off'}">${DEFS[id].name} ${pets[id]?'켜짐':'꺼짐'}</button>`).join('');
+ document.getElementById('pickers').innerHTML=IDS.map(id=>`<button data-p="${id}" class="${target===id?'on':'off'}">${DEFS[id].name}에게 시키기</button>`).join('');
+ document.getElementById('sizes').innerHTML=[[2,'작게'],[3,'보통'],[4,'크게']].map(([v,l])=>`<button data-s="${v}" class="${SC===v?'on':''}">크기 ${l}</button>`).join('');
+ const d=DEFS[target];document.getElementById('moves').innerHTML=menuOf(d).map(([k,l])=>`<button data-m="${k}"></button>`).join('');
+ [...document.querySelectorAll('#moves button')].forEach((b,i)=>b.textContent=menuOf(d)[i][1]);
+ document.getElementById('snd').textContent=soundOn?'소리 켜짐 🔊':'소리 꺼짐 🔇';const sp=document.getElementById('spicy');if(sp)sp.textContent=spicyOn?'🌶 엄마 매운맛 대사 켜짐':'🌶 엄마 매운맛 대사 꺼짐'}
+function doMove(k){ensureAudio();if(!pets[target]){store.set('on_'+target,true);syncPets()}const p=pets[target];if(p){if(p.state==='act'||p.state==='land')p.force(k);else setTimeout(()=>p.force(k),800)}panel.classList.remove('on')}
+panel.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ensureAudio();
+ if(b.dataset.t){const id=b.dataset.t;store.set('on_'+id,!pets[id]);syncPets()}
+ else if(b.dataset.p){target=b.dataset.p;store.set('target',target);renderPanel()}
+ else if(b.dataset.s){store.set('size',+b.dataset.s);resize();renderPanel()}
+ else if(b.dataset.m)doMove(b.dataset.m)});
+document.getElementById('rand').onclick=()=>doMove(pick(menuOf(DEFS[target]))[0]);
+const spb=document.getElementById('spicy');if(spb)spb.onclick=()=>{spicyOn=!spicyOn;store.set('spicy',spicyOn);renderPanel()};
+document.getElementById('snd').onclick=()=>{soundOn=!soundOn;store.set('sound',soundOn);renderPanel()};
+document.getElementById('go').onclick=()=>{ensureAudio();document.getElementById('intro').remove();store.set('seen',true)};
+if(store.get('seen',false)||matchMedia('(display-mode: standalone)').matches||navigator.standalone)document.getElementById('intro').remove();
+
+/* 루프 */
+function resize(){SC=store.get('size',innerWidth>=600?2.5:2);computePlats();for(const p of Object.values(pets)){if(p.state!=='drag'&&p.state!=='away'){p.x=Math.max(minX,Math.min(maxX,p.x));if(p.state!=='air')p.goAir(0,0,'fall')}}}
+addEventListener('resize',()=>setTimeout(resize,150));
+ball.init();resize();syncPets();
+let last=performance.now();
+function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;const ms=Date.now();
+ for(const p of Object.values(pets)){p.update(dt,ms);p.render(ms)}interactions(dt);ball.update(dt);requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+}
+</script>
+</body></html>

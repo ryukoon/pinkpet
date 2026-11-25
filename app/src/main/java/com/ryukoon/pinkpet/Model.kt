@@ -93,3 +93,29 @@ object MomDef : CharDef {
     override val moves get() = MomMoves.all
     override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = MomSprite.render(p)
 }
+
+object SiaDef : CharDef {
+    override val id = "sia"
+    override val name = "시아"
+    override val tapSay = "ㅇㅋ 콜!"
+    override val sleepMin = 7f
+    override val sleepMax = 10f
+    override val scale = .92f
+    override val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
+        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개")
+    override val moves get() = SiaMoves.all
+    override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = SiaSprite.render(p)
+}
+
+object WooDef : CharDef {
+    override val id = "woo"
+    override val name = "정우"
+    override val tapSay = "안녕하십니까~ 정우입니다!"
+    override val sleepMin = 6f
+    override val sleepMax = 9f
+    override val scale = .84f
+    override val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
+        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개")
+    override val moves get() = WooMoves.all
+    override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = WooSprite.render(p)
+}

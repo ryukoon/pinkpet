@@ -584,6 +584,7 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
                 cmd == "shake" -> { shake(5f); sfx.vibrate(30) }
                 cmd == "flash" -> flash(.5f)
                 cmd == "pop" -> sfx.pop()
+                cmd == "crash" -> { shatter(x + dir * 9 * SC, y - 11 * SC, true); onCrash?.invoke(x) }
             }
         }
         val fx = mv.fx

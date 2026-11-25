@@ -363,7 +363,7 @@ class Pet{
    const p=this.plat;if(p&&!p.floor&&(nx<p.x1||nx>p.x2)){this.x=nx;this.goAir(sd*mv.move*.7,-80,'fall');return}this.x=nx}}
   const ev=mv.events||[];while(this.evIdx<ev.length&&this.t>=ev[this.evIdx][0]){const c=ev[this.evIdx][1];this.evIdx++;
    if(c.startsWith('say:'))this.say(c.slice(4),1.4);else if(c.startsWith('boing:')){this.floater(c.slice(6),'boing');sfx.boing(.6)}else if(c.startsWith('fl:'))this.floater(c.slice(3),'',rnd(-10,10));
-   else if(c==='shake'){shake(5);vib(30)}else if(c==='flash')flash(.5);else if(c==='pop')sfx.pop()}
+   else if(c==='shake'){shake(5);vib(30)}else if(c==='flash')flash(.5);else if(c==='pop')sfx.pop();else if(c==='crash'){shatter(this.x+this.dir*9*this.sc,this.y-11*this.sc,true);this.onCrash&&this.onCrash(this.x)}}
   if(mv.fx){this.fxT+=dt;if(this.fxT>mv.fxEvery){this.fxT=0;this.floater(mv.fx,mv.fxKind||'',rnd(-12,14))}}}
  movePose(mv,t){const list=t>=(mv.switchAt??99)&&mv.frames2?mv.frames2:mv.frames;const p=Pz(Object.assign({},list[fl(t*mv.fps)%list.length]));
   p.hx|=0;p.hy|=0;p.by|=0;p.ly|=0;
