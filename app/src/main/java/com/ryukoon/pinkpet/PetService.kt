@@ -164,7 +164,7 @@ class PetService : Service() {
         val sc = gridPx()
         engine.setScreen(b.width().toFloat(), b.height().toFloat(), b.height() - nav.bottom - 6 * d, sc)
         fxLp.width = b.width(); fxLp.height = b.height(); fxLp.x = 0; fxLp.y = 0
-        petW = (28 * sc).roundToInt(); petH = (30 * sc).roundToInt(); feetY = 27 * sc
+        petW = (32 * sc).roundToInt(); petH = (38 * sc).roundToInt(); feetY = 29 * sc
         petLp.width = petW; petLp.height = petH
         computePetPos()
         if (addNow) {
@@ -178,7 +178,7 @@ class PetService : Service() {
 
     private fun computePetPos(): Boolean {
         val nx = (engine.x - petW / 2f).roundToInt()
-        val ny = (engine.y - feetY).roundToInt()
+        val ny = (engine.drawY - feetY).roundToInt()
         if (nx == petLp.x && ny == petLp.y) return false
         petLp.x = nx; petLp.y = ny
         return true

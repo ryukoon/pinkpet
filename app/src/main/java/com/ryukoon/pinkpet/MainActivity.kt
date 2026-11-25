@@ -22,11 +22,7 @@ import android.widget.TextView
 
 /** 권한 설정 + 펫 켜기/끄기 + 모션 메뉴 */
 class MainActivity : Activity() {
-    private val acts = listOf(
-        "idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
-        "sleep" to "잠자기", "wave" to "손인사", "dance" to "춤추기", "look" to "두리번", "stretch" to "기지개",
-        "pen" to "펜 칼싸움", "ramen" to "몰래 라면", "power" to "파워업 변신", "chicken" to "치킨 변신"
-    )
+    private val acts = Catalog.menu
     private lateinit var status: TextView
     private lateinit var toggle: Button
     private lateinit var soundBtn: Button
@@ -58,7 +54,9 @@ class MainActivity : Activity() {
         root.addView(section("2. 펫 켜기"))
         toggle = button("펫 시작!") { togglePet() }.also { root.addView(it) }
 
-        root.addView(section("3. 모션 골라서 시키기"))
+        root.addView(section("3. 모션 골라서 시키기 (${acts.size}종)"))
+        root.addView(button("🎲 아무거나 랜덤!") { sendAct(acts.random().first) })
+        root.addView(text("🐔 표시는 닭으로 변신해서 하는 모션이에요.", 13f, false, Color.DKGRAY))
         val grid = GridLayout(this).apply { columnCount = 2 }
         for ((key, label) in acts) {
             val b = button(label) { sendAct(key) }

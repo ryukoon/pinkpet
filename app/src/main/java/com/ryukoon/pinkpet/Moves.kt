@@ -1,0 +1,123 @@
+package com.ryukoon.pinkpet
+
+/**
+ * 프레임 목록으로 만드는 일반 모션.
+ * events: (시간초, 명령) — "say:글", "boing:글", "fl:글", "shake", "flash", "pop"
+ */
+class Move(
+    val label: String, val dur: Float, val fps: Float, val frames: List<Pose>,
+    val w: Float = .45f, val move: Float = 0f, val back: Boolean = false,
+    val says: List<String>? = null, val fx: String? = null, val fxEvery: Float = 0f, val fxKind: String = "",
+    val spin: Float = 0f, val roll: Float = 0f, val jitter: Boolean = false,
+    val hop: Float = 0f, val hopRate: Float = 0f, val float: Float = 0f,
+    val switchAt: Float = 99f, val frames2: List<Pose>? = null,
+    val events: List<Pair<Float, String>> = emptyList(), val chicken: Boolean = false
+)
+
+private fun P(
+    hx: Int = 0, hy: Int = 0, by: Int = 12, ly: Int = 18, legs: String = "stand", aL: String = "down", aR: String = "down",
+    eyes: String = "open", look: Int = 1, mouth: String = "flat", blush: Boolean = false, lying: Boolean = false,
+    prop: String? = null, sx: Float = 1f, sy: Float = 1f, rot: Float = 0f
+) = Pose(hx = hx, hy = hy, by = by, ly = ly, legs = legs, aL = aL, aR = aR, eyes = eyes, look = look, mouth = mouth,
+    blush = blush, lying = lying, prop = prop, sx = sx, sy = sy, rot = rot)
+
+private fun sitP(eyes: String = "open", mouth: String = "flat", hy: Int = 2, aR: String = "down", prop: String? = null, blush: Boolean = false, look: Int = 1) =
+    Pose(by = 14, hy = hy, ly = 20, legs = "sit", eyes = eyes, mouth = mouth, aR = aR, prop = prop, blush = blush, look = look)
+
+object Moves {
+    val all: LinkedHashMap<String, Move> = linkedMapOf(
+        "coffee" to Move("커피 한잔", 5f, 1.2f, listOf(P(aR = "hold", prop = "coffee"), P(aR = "hold", prop = "coffee", eyes = "closed", mouth = "o", hy = -1)),
+            says = listOf("커피는 역시 아아…", "후~ 살 것 같다"), fx = "~", fxEvery = .6f, fxKind = "z"),
+        "phone" to Move("폰 보기", 5f, 1.5f, listOf(P(aR = "hold", prop = "phone", hy = 1, look = -1), P(aR = "hold", prop = "phone", hy = 1, mouth = "grin", eyes = "closed")),
+            says = listOf("ㅋㅋㅋㅋ", "이거 봐봐"), fx = "ㅋ", fxEvery = .7f),
+        "selfie" to Move("셀카", 3f, 2f, listOf(P(aR = "up", prop = "phone", mouth = "smile", eyes = "wink"), P(aR = "up", prop = "phone", mouth = "grin", blush = true)),
+            events = listOf(1.2f to "flash", 1.2f to "fl:찰칵!", 2.2f to "flash", 2.2f to "fl:찰칵!")),
+        "read" to Move("독서", 6f, .5f, listOf(sitP(aR = "hold", prop = "book", hy = 3), sitP(aR = "hold", prop = "book", hy = 3, look = -1)), says = listOf("흠… 재밌네")),
+        "music" to Move("음악 감상", 5f, 2.5f, listOf(P(eyes = "closed", mouth = "smile", hy = 0).also { it.prop = "headphones" }, P(eyes = "closed", mouth = "smile", hy = 1, by = 13).also { it.prop = "headphones" }),
+            fx = "♪", fxEvery = .45f),
+        "sing" to Move("노래방", 5f, 3f, listOf(P(aR = "hold", prop = "mic", mouth = "open", aL = "out"), P(aR = "hold", prop = "mic", mouth = "o", eyes = "closed", aL = "up")),
+            says = listOf("♬ 진행해줘~ 진행해줘~", "♬ 오늘도 퇴근~"), fx = "♪", fxEvery = .4f),
+        "guitar" to Move("기타 연주", 5f, 4f, listOf(P(aR = "hold", aL = "out", prop = "guitar", eyes = "closed", mouth = "smile"), P(aR = "hip", aL = "out", prop = "guitar", eyes = "closed", mouth = "o")),
+            fx = "♪", fxEvery = .35f, says = listOf("🎸 둥가둥가")),
+        "workout" to Move("아령 운동", 4f, 2f, listOf(P(aL = "up", aR = "up", prop = "dumbbell", mouth = "grin", eyes = "angry"), P(prop = "dumbbellDown", mouth = "o", by = 13, hy = 1)),
+            says = listOf("하나! 둘!", "근손실은 안돼"), fx = "💦", fxEvery = .8f),
+        "squat" to Move("스쿼트", 4f, 2f, listOf(P(aL = "out", aR = "out"), P(by = 14, hy = 3, legs = "tuck", ly = 19, aL = "out", aR = "out", mouth = "grin", eyes = "angry")),
+            says = listOf("스쿼트 열 개!"), fx = "💦", fxEvery = 1f),
+        "jumpingjack" to Move("팔벌려뛰기", 4f, 4f, listOf(P(aL = "up", aR = "up", legs = "walkA", mouth = "open"), P(legs = "stand")), hop = 3f, hopRate = 4f,
+            fx = "💦", fxEvery = .9f),
+        "yoga" to Move("요가", 5f, .6f, listOf(P(aL = "up", aR = "up", legs = "kick", eyes = "closed"), P(aL = "out", aR = "out", legs = "kick", eyes = "closed", rot = 4f)),
+            says = listOf("나마스떼…"), fx = "✨", fxEvery = 1f),
+        "meditate" to Move("명상(공중부양)", 6f, .5f, listOf(sitP(eyes = "closed", aR = "out").also { it.aL = "out" }), float = 6f,
+            says = listOf("옴~"), fx = "✨", fxEvery = .7f),
+        "tiptoe" to Move("살금살금", 4f, 3f, listOf(P(legs = "walkA", eyes = "wide", look = -1, aL = "hip", aR = "hip"), P(legs = "walkB", eyes = "wide", aL = "hip", aR = "hip")),
+            move = 28f, says = listOf("쉿… 아무도 모르게…")),
+        "moonwalk" to Move("문워크", 4f, 5f, listOf(P(legs = "walkA", aL = "hip", aR = "out", mouth = "smile"), P(legs = "walkB", aL = "hip", aR = "out", mouth = "o")),
+            move = 70f, back = true, fx = "♪", fxEvery = .4f, says = listOf("🕺 우~!")),
+        "spin" to Move("빙글빙글", 3f, 1f, listOf(P(aL = "out", aR = "out", mouth = "open", eyes = "closed")), spin = 14f, events = listOf(2.9f to "fl:💫")),
+        "roll" to Move("데굴데굴", 3f, 1f, listOf(P(legs = "tuck", aL = "up", aR = "up", eyes = "closed", mouth = "open")), roll = 540f, move = 120f, events = listOf(2.9f to "say:어지러…")),
+        "shiver" to Move("덜덜 추워", 4f, 1f, listOf(P(aL = "hold", aR = "hold", eyes = "wide", mouth = "o")), jitter = true, says = listOf("으으 추워…"), fx = "❄", fxEvery = .6f),
+        "hot" to Move("더워", 4f, 4f, listOf(P(aR = "wave", mouth = "tongue", eyes = "closed"), P(aR = "up", mouth = "tongue", eyes = "closed")), says = listOf("더워어어~"), fx = "💦", fxEvery = .5f),
+        "sneeze" to Move("재채기", 2.6f, 2f, listOf(P(eyes = "closed", mouth = "o", hy = -1, by = 11), P(eyes = "closed", mouth = "open", hy = -1, by = 11)),
+            switchAt = 1.5f, frames2 = listOf(P(eyes = "closed", mouth = "open", hy = 2, by = 13, aL = "out", aR = "out", sy = .85f, sx = 1.15f)),
+            events = listOf(.1f to "say:아… 아…", 1.5f to "boing:에취!!", 1.5f to "shake")),
+        "hiccup" to Move("딸꾹질", 4f, 1f, listOf(P(eyes = "wide", mouth = "o")), events = listOf(.5f to "fl:딸꾹!", .5f to "pop", 1.6f to "fl:딸꾹!", 1.6f to "pop", 2.8f to "fl:딸꾹!", 2.8f to "pop"), hop = 4f, hopRate = .9f),
+        "yawn" to Move("하품", 3f, 1f, listOf(P(aR = "up", eyes = "closed", mouth = "open", sy = 1.05f)), says = listOf("하아아암…")),
+        "cry" to Move("엉엉 울기", 4f, 3f, listOf(P(eyes = "tear", mouth = "open", aL = "hold", aR = "hold"), P(eyes = "tear", mouth = "o", aL = "hold", aR = "hold", hy = 1, by = 13)),
+            says = listOf("흑흑… 월요일 싫어", "엉엉…"), fx = "💧", fxEvery = .5f),
+        "laugh" to Move("깔깔 웃기", 3.5f, 6f, listOf(P(eyes = "closed", mouth = "grin", aL = "hip", aR = "hip"), P(eyes = "closed", mouth = "open", aL = "hip", aR = "hip", hy = 1, by = 13)),
+            fx = "ㅋ", fxEvery = .3f, says = listOf("푸하하하!")),
+        "angry" to Move("버럭", 3f, 6f, listOf(P(eyes = "angry", mouth = "open", aL = "out", aR = "out"), P(eyes = "angry", mouth = "grin", aL = "up", aR = "up")), jitter = true,
+            says = listOf("아 진짜!!", "누가 내 푸딩 먹었어!"), fx = "💢", fxEvery = .5f),
+        "love" to Move("사랑해요", 3.5f, 1.5f, listOf(P(aL = "up", aR = "up", eyes = "closed", mouth = "smile", blush = true), P(aL = "up", aR = "up", eyes = "closed", mouth = "smile", blush = true, hy = 1, by = 13)),
+            says = listOf("사랑해요~ 💕"), fx = "💕", fxEvery = .35f),
+        "shy" to Move("부끄부끄", 3.5f, 2f, listOf(P(aL = "hold", aR = "hold", eyes = "closed", blush = true, mouth = "smile", hx = -1, look = -1, rot = -4f), P(aL = "hold", aR = "hold", eyes = "closed", blush = true, mouth = "smile", hx = 1, rot = 4f)),
+            says = listOf("아잉… 부끄러워")),
+        "think" to Move("생각 중", 4f, .7f, listOf(P(aR = "hold", look = -1, hy = -1), P(aR = "hold", look = 1, eyes = "closed")), says = listOf("흠…"), fx = "💭", fxEvery = 1.2f),
+        "idea" to Move("번뜩 아이디어", 3f, .7f, listOf(P(aR = "hold", look = -1), P(aR = "hold", eyes = "closed")),
+            switchAt = 1.6f, frames2 = listOf(P(aR = "up", eyes = "sparkle", mouth = "grin", sy = 1.06f)), events = listOf(1.6f to "boing:💡 아하!", 1.6f to "pop")),
+        "salute" to Move("경례", 2.5f, 1f, listOf(P(aR = "wave", eyes = "angry", mouth = "flat", sy = 1.04f)), says = listOf("충성!")),
+        "bow" to Move("꾸벅 인사", 2.5f, 1.2f, listOf(P(mouth = "smile"), P(hy = 3, by = 13, eyes = "closed", mouth = "smile", sy = .92f)), says = listOf("안녕하세요~", "수고하셨습니다!")),
+        "clap" to Move("박수", 3f, 6f, listOf(P(aL = "hold", aR = "hold", mouth = "grin", eyes = "closed"), P(aL = "out", aR = "out", mouth = "grin")), fx = "👏", fxEvery = .35f, says = listOf("짝짝짝!")),
+        "cheer" to Move("응원", 3.5f, 4f, listOf(P(aL = "up", aR = "out", mouth = "open"), P(aL = "out", aR = "up", mouth = "grin")), hop = 3f, hopRate = 2f, says = listOf("화이팅!!", "할 수 있다!!")),
+        "flex" to Move("근육 자랑", 3f, 1.5f, listOf(P(aL = "up", aR = "up", eyes = "angry", mouth = "grin", sx = 1.1f), P(aL = "up", aR = "up", eyes = "wink", mouth = "grin", sx = 1.12f)), says = listOf("💪 이 근육 봐라")),
+        "kungfu" to Move("쿵푸", 3.5f, 3f, listOf(P(legs = "kick", aR = "out", aL = "hip", eyes = "angry", mouth = "open"), P(legs = "walkA", aL = "out", aR = "hip", eyes = "angry")), fx = "하앗!", fxEvery = .7f),
+        "boxing" to Move("쉐도우 복싱", 3.5f, 6f, listOf(P(aR = "out", aL = "hold", legs = "walkA", eyes = "angry", hx = 1), P(aR = "hold", aL = "out", legs = "walkA", eyes = "angry")), fx = "퍽!", fxEvery = .45f),
+        "sleepwalk" to Move("몽유병", 5f, 2f, listOf(P(aL = "out", aR = "out", eyes = "closed", legs = "walkA", mouth = "o"), P(aL = "out", aR = "out", eyes = "closed", legs = "walkB")), move = 25f, fx = "z", fxEvery = .8f, fxKind = "z"),
+        "trip" to Move("꽈당", 3.5f, 6f, listOf(P(legs = "walkA", mouth = "smile"), P(legs = "walkB")), move = 90f,
+            switchAt = 1f, frames2 = listOf(P(lying = true, eyes = "wide", mouth = "open")), events = listOf(1f to "boing:꽈당!", 1f to "shake", 2.2f to "say:아야야…")),
+        "hide" to Move("숨바꼭질", 5f, 1f, listOf(P(aL = "hold", aR = "hold", eyes = "closed")),
+            switchAt = 3.5f, frames2 = listOf(P(aR = "out", eyes = "wide", mouth = "grin")), events = listOf(.2f to "say:하나… 둘… 셋…", 3.5f to "boing:찾았다!")),
+        "chickenEat" to Move("치킨 먹방", 5f, 2.5f, listOf(P(aR = "hold", prop = "drumstick", mouth = "open"), P(aR = "hold", prop = "drumstick", mouth = "flat", eyes = "closed", blush = true)),
+            says = listOf("치킨은 진리…", "냠냠 쩝쩝"), fx = "🍗", fxEvery = .9f),
+        "icecream" to Move("아이스크림", 4f, 2f, listOf(P(aR = "hold", prop = "icecream", mouth = "tongue"), P(aR = "hold", prop = "icecream", mouth = "smile", eyes = "closed", blush = true)), fx = "❤", fxEvery = .8f),
+        "balloon" to Move("풍선 둥실", 5f, 1f, listOf(P(aR = "out", prop = "balloon", mouth = "smile")), float = 8f, says = listOf("둥실둥실~")),
+        "camera" to Move("사진 찍기", 3f, 1f, listOf(P(aR = "hold", aL = "hold", prop = "camera", eyes = "wink")), events = listOf(1.3f to "flash", 1.3f to "fl:찰칵!", 1.3f to "pop", 2.2f to "say:잘 나왔다!")),
+        "laptop" to Move("노트북 업무", 6f, 4f, listOf(sitP(prop = "laptop", hy = 2), sitP(prop = "laptop", hy = 2, look = -1)), fx = "타닥", fxEvery = .5f,
+            says = listOf("보고서 진행해줘…", "결재 올려야 하는데…")),
+        "doze" to Move("꾸벅꾸벅 졸기", 5f, 1.2f, listOf(sitP(eyes = "closed", hy = 2), sitP(eyes = "closed", hy = 4)), fx = "z", fxEvery = .9f, fxKind = "z",
+            switchAt = 4.2f, frames2 = listOf(sitP(eyes = "wide", mouth = "o", hy = 1)), events = listOf(4.2f to "boing:헉! 안 잤어요!")),
+        "flower" to Move("꽃 향기", 4f, .8f, listOf(P(aR = "hold", prop = "flower", eyes = "closed", mouth = "smile", blush = true), P(aR = "hold", prop = "flower", eyes = "closed", mouth = "o")),
+            says = listOf("음~ 좋은 향기"), fx = "🌸", fxEvery = .8f),
+        "wink" to Move("윙크", 2.5f, 1f, listOf(P(eyes = "wink", mouth = "smile", aR = "wave", blush = true)), says = listOf("😉 찡긋"), fx = "✨", fxEvery = .7f),
+        "ballet" to Move("발레", 4f, 1f, listOf(P(legs = "kick", aL = "up", aR = "up", eyes = "closed", mouth = "smile")), spin = 6f, fx = "✨", fxEvery = .4f),
+        "robot" to Move("로봇 춤", 4f, 3f, listOf(P(aL = "out", aR = "down", legs = "walkA"), P(aL = "down", aR = "out", legs = "walkB", hx = 1), P(aL = "up", aR = "up", legs = "stand")),
+            says = listOf("삐-빅. 진행합니다."), fx = "⚙", fxEvery = .8f),
+        "offwork" to Move("칼퇴근", 4f, 8f, listOf(P(legs = "walkA", aR = "wave", mouth = "grin"), P(legs = "walkB", aR = "up", mouth = "grin")), move = 110f, says = listOf("칼퇴!! 내일 봐요 👋")),
+        "jumprope" to Move("줄넘기", 4f, 4f, listOf(P(aL = "out", aR = "out", legs = "tuck"), P(aL = "hip", aR = "hip")), hop = 4f, hopRate = 2f, fx = "💦", fxEvery = .9f,
+            events = listOf(.5f to "fl:1", 1f to "fl:2", 1.5f to "fl:3", 2f to "fl:4", 2.5f to "fl:5")),
+        "heartShot" to Move("하트 발사", 3f, 3f, listOf(P(aL = "out", aR = "out", mouth = "smile", eyes = "wink", prop = "heart"), P(aL = "hold", aR = "hold", mouth = "smile", blush = true)),
+            fx = "💖", fxEvery = .25f, says = listOf("뿅! 💘")),
+        "pray" to Move("소원 빌기", 4f, 1f, listOf(P(aL = "hold", aR = "hold", eyes = "closed", mouth = "o")), says = listOf("로또 1등 되게 해주세요…"), fx = "✨", fxEvery = .6f),
+        "stretchSide" to Move("옆구리 스트레칭", 3.5f, 1f, listOf(P(aL = "up", aR = "up", rot = -10f, eyes = "closed"), P(aL = "up", aR = "up", rot = 10f, eyes = "closed")), says = listOf("으차~")),
+        // ---- 닭 변신 전용 ----
+        "cCrow" to Move("꼬끼오 울기", 3f, 2f, listOf(P(hy = -1, mouth = "open", eyes = "closed", aL = "out", aR = "out", sy = 1.08f), P(mouth = "open", eyes = "closed", aL = "up", aR = "up")), chicken = true, w = 1.2f,
+            events = listOf(.3f to "boing:꼬끼오~!!", .3f to "pop")),
+        "cPeck" to Move("모이 쪼기", 4f, 4f, listOf(P(hy = 0), P(hy = 3, by = 13, eyes = "closed", sy = .94f)), chicken = true, w = 1.2f, fx = "·", fxEvery = .25f, says = listOf("콕콕콕")),
+        "cEgg" to Move("알 낳기", 3.5f, 6f, listOf(P(eyes = "closed", mouth = "o", sy = .9f, sx = 1.1f), P(eyes = "closed", mouth = "open", sy = .95f)), chicken = true, w = 1f, jitter = true,
+            switchAt = 2.2f, frames2 = listOf(P(eyes = "sparkle", mouth = "smile", blush = true)), events = listOf(.1f to "say:끄응…", 2.2f to "boing:🥚 뿅!", 2.2f to "pop")),
+        "cHappy" to Move("행복한 날갯짓", 4f, 8f, listOf(P(aL = "up", aR = "up", eyes = "closed", mouth = "smile", blush = true), P(aL = "out", aR = "out", eyes = "closed", mouth = "open", blush = true)),
+            chicken = true, w = 1.4f, hop = 5f, hopRate = 2.5f, fx = "💕", fxEvery = .3f, says = listOf("행복해~!", "꼬꼬꼬~ 신난다")),
+        "cDance" to Move("닭 댄스", 4f, 5f, listOf(P(aL = "up", aR = "out", legs = "walkA", mouth = "open", hx = -1), P(aL = "out", aR = "up", legs = "walkB", mouth = "smile", hx = 1)),
+            chicken = true, w = 1.2f, fx = "♪", fxEvery = .35f, says = listOf("치킨 댄스~ 🐔"))
+    )
+}

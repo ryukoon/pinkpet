@@ -14,6 +14,7 @@ data class Pose(
     var eyes: String = "open", var look: Int = 1, var mouth: String = "flat",
     var blush: Boolean = false, var lying: Boolean = false, var pot: Boolean = false,
     var eat: Boolean = false, var pen: String? = null, var box: Boolean = false,
+    var prop: String? = null, var lift: Float = 0f, var pivot: Float = 0f,
     var sx: Float = 1f, var sy: Float = 1f, var rot: Float = 0f
 )
 
@@ -32,6 +33,7 @@ object Sprite {
     private val COMB = c("#e8312a"); private val BEAK = c("#f5c518"); private val BEAK_SH = c("#d99a0b")
     private val FOOT = c("#f2b705"); private val CLAW = c("#6b4a2b"); private val CH_LID = c("#b08a6a")
     private val BOX = c("#d93a2e"); private val BOX_IN = c("#fff6ee"); private val FRIED = c("#a8581e"); private val FRIED2 = c("#d88a34")
+    private val SPARK = c("#ffe45e"); private val TEAR = c("#5bc0ff"); private val TONGUE = c("#ff7a9a")
     private val POWER_A = c("#ff3d75"); private val POWER_B = c("#ff6f96"); private val POWER_HI = c("#ffe0ea")
 
     val bmp: Bitmap = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888)
@@ -95,6 +97,7 @@ object Sprite {
             "down" -> { px(20, by + 3, 1, 1, PEN); px(21, by + 4, 1, 1, PEN); px(21, by + 5, 1, 1, PEN_TIP) }
             "stab" -> { px(20, by + 1, 1, 1, PEN_TIP); px(19, by + 1, 1, 1, PEN) }
         }
+        drawProp(p, by)
         if (p.pot) {
             px(5, 16, 11, 1, c("#f6d978")); px(6, 16, 9, 1, c("#d8642c")); px(7, 16, 1, 1, c("#fbe9a0")); px(10, 16, 2, 1, c("#fbe9a0")); px(13, 16, 1, 1, c("#fbe9a0"))
             px(5, 17, 11, 4, c("#e0b54a")); px(5, 20, 11, 1, c("#b88a2a")); px(7, 18, 1, 1, c("#f6d978")); px(11, 19, 1, 1, c("#f6d978"))
@@ -107,6 +110,32 @@ object Sprite {
         cv.restore()
     }
 
+    private fun drawProp(p: Pose, by: Int) {
+        val pr = p.prop ?: return
+        val (ax, ay) = when (p.aR) {
+            "up" -> 16 to by - 5; "out" -> 20 to by + 1; "wave" -> 18 to by - 4
+            "hip" -> 16 to by + 3; "hold" -> 13 to by + 2; else -> 16 to by + 5
+        }
+        val dark = c("#22222c"); val white = Color.WHITE
+        when (pr) {
+            "phone" -> { px(ax, ay - 2, 2, 3, dark); px(ax, ay - 2, 2, 2, c("#6fd3ff")) }
+            "coffee" -> { px(ax - 1, ay - 2, 3, 3, white); px(ax - 1, ay - 2, 3, 1, c("#6b3e1e")); px(ax + 2, ay - 1, 1, 1, white) }
+            "book" -> { px(ax - 3, ay - 2, 5, 4, c("#3b6fd8")); px(ax - 2, ay - 1, 3, 2, white) }
+            "mic" -> { px(ax, ay - 3, 2, 2, c("#666677")); px(ax, ay - 1, 1, 2, dark) }
+            "drumstick" -> { px(ax - 1, ay - 2, 3, 2, c("#c8782e")); px(ax + 1, ay, 1, 1, c("#a8581e")); px(ax + 2, ay + 1, 1, 1, white) }
+            "icecream" -> { px(ax, ay - 3, 2, 2, c("#ffb6c8")); px(ax, ay - 1, 2, 1, c("#d9a24a")) }
+            "balloon" -> { px(ax, ay - 6, 1, 6, c("#dddddd")); px(ax - 1, ay - 9, 3, 3, c("#ff4f7a")); px(ax - 1, ay - 9, 1, 1, c("#ffc0d0")) }
+            "camera" -> { px(ax - 2, ay - 2, 4, 3, c("#333344")); px(ax - 1, ay - 1, 2, 1, c("#6fd3ff")); px(ax + 1, ay - 3, 1, 1, c("#333344")) }
+            "flower" -> { px(ax, ay - 1, 1, 3, c("#3a9a4a")); px(ax - 1, ay - 3, 3, 2, c("#ff6f96")); px(ax, ay - 3, 1, 1, SPARK) }
+            "heart" -> { val hc = c("#ff4f7a"); px(ax - 2, ay - 4, 1, 1, hc); px(ax, ay - 4, 1, 1, hc); px(ax - 2, ay - 3, 3, 1, hc); px(ax - 1, ay - 2, 1, 1, hc) }
+            "dumbbell" -> { px(0, by - 6, 22, 1, c("#777788")); px(0, by - 8, 2, 4, c("#333344")); px(20, by - 8, 2, 4, c("#333344")) }
+            "dumbbellDown" -> { px(1, by + 5, 20, 1, c("#777788")); px(0, by + 3, 2, 4, c("#333344")); px(19, by + 3, 2, 4, c("#333344")) }
+            "guitar" -> { px(9, by + 2, 6, 4, c("#b5651d")); px(10, by + 1, 4, 1, c("#b5651d")); px(11, by + 3, 2, 2, c("#3a2410")); px(15, by + 2, 5, 1, c("#5a3a1e")); px(20, by + 1, 1, 2, c("#3a2410")) }
+            "laptop" -> { px(4, 19, 11, 1, c("#bfbfc8")); px(5, 15, 9, 4, c("#3a3a46")); px(6, 16, 7, 2, c("#6fd3ff")) }
+            "headphones" -> { px(5 + p.hx, 1 + p.hy, 11, 1, c("#333344")); px(3 + p.hx, 6 + p.hy, 2, 3, c("#ff4f7a")); px(16 + p.hx, 6 + p.hy, 2, 3, c("#ff4f7a")) }
+        }
+    }
+
     private val LEGS = mapOf(
         "stand" to arrayOf(intArrayOf(6, 0, 3, 3), intArrayOf(12, 0, 3, 3)),
         "walkA" to arrayOf(intArrayOf(5, 0, 3, 3), intArrayOf(13, 0, 3, 3)),
@@ -114,7 +143,8 @@ object Sprite {
         "runA" to arrayOf(intArrayOf(5, 0, 3, 2), intArrayOf(13, 0, 3, 3)),
         "tuck" to arrayOf(intArrayOf(6, 0, 3, 2), intArrayOf(12, 0, 3, 2)),
         "dangle" to arrayOf(intArrayOf(7, 0, 3, 3), intArrayOf(11, 0, 3, 3)),
-        "sit" to arrayOf(intArrayOf(5, 0, 4, 2), intArrayOf(12, 0, 4, 2))
+        "sit" to arrayOf(intArrayOf(5, 0, 4, 2), intArrayOf(12, 0, 4, 2)),
+        "kick" to arrayOf(intArrayOf(6, 0, 3, 3), intArrayOf(13, -1, 3, 2))
     )
     private val SHOES = mapOf(
         "stand" to arrayOf(intArrayOf(5, 3, 4, 1), intArrayOf(12, 3, 4, 1)),
@@ -123,7 +153,8 @@ object Sprite {
         "runA" to arrayOf(intArrayOf(3, 1, 3, 1), intArrayOf(13, 3, 4, 1)),
         "tuck" to arrayOf(intArrayOf(5, 2, 4, 1), intArrayOf(12, 2, 4, 1)),
         "dangle" to arrayOf(intArrayOf(7, 3, 3, 1), intArrayOf(11, 3, 3, 1)),
-        "sit" to arrayOf(intArrayOf(3, 0, 2, 2), intArrayOf(16, 0, 2, 2))
+        "sit" to arrayOf(intArrayOf(3, 0, 2, 2), intArrayOf(16, 0, 2, 2)),
+        "kick" to arrayOf(intArrayOf(5, 3, 4, 1), intArrayOf(16, -2, 2, 3))
     )
 
     private fun legs(t: String, ly: Int) {
@@ -147,6 +178,7 @@ object Sprite {
             "out" -> { r(1, by + 1, 3, 2, SHIRT); r(0, by + 1, 1, 2, hand) }
             "wave" -> { r(2, by - 3, 2, 4, SHIRT); r(1, by - 4, 2, 1, hand) }
             "hip" -> { r(3, by + 1, 2, 2, SHIRT); r(4, by + 3, 1, 1, hand) }
+            "hold" -> { r(3, by + 1, 2, 2, SHIRT); r(4, by + 3, 3, 1, SHIRT); r(7, by + 2, 1, 1, hand) }
         }
     }
 
@@ -166,14 +198,22 @@ object Sprite {
         h(4, 7, 1, 2, SKIN); h(16, 7, 1, 2, SKIN); h(4, 8, 1, 1, SKIN_SH); h(16, 8, 1, 1, SKIN_SH)
         h(7, 6, 2, 1, HAIR); h(12, 6, 2, 1, HAIR)
         if (pw) { h(9, 7, 1, 1, HAIR); h(11, 7, 1, 1, HAIR) }
-        if (p.eyes == "closed") { h(7, 7, 2, 1, LID); h(12, 7, 2, 1, LID) }
-        else {
-            val l = if (p.look < 0) 0 else 1
-            h(7 + l, 7, 1, 1, EYE); h(12 + l, 7, 1, 1, EYE)
-            if (p.eyes == "wide") { h(7 + l, 8, 1, 1, EYE); h(12 + l, 8, 1, 1, EYE); h(7, 5, 2, 1, HAIR); h(12, 5, 2, 1, HAIR) }
+        val l = if (p.look < 0) 0 else 1
+        when (p.eyes) {
+            "closed" -> { h(7, 7, 2, 1, LID); h(12, 7, 2, 1, LID) }
+            "wink" -> { h(7 + l, 7, 1, 1, EYE); h(12, 7, 2, 1, LID) }
+            "sparkle" -> { h(7 + l, 7, 1, 1, SPARK); h(12 + l, 7, 1, 1, SPARK); h(7 + l, 8, 1, 1, EYE); h(12 + l, 8, 1, 1, EYE) }
+            else -> {
+                h(7 + l, 7, 1, 1, EYE); h(12 + l, 7, 1, 1, EYE)
+                if (p.eyes == "wide") { h(7 + l, 8, 1, 1, EYE); h(12 + l, 8, 1, 1, EYE); h(7, 5, 2, 1, HAIR); h(12, 5, 2, 1, HAIR) }
+                if (p.eyes == "angry") { h(9, 7, 1, 1, HAIR); h(11, 7, 1, 1, HAIR) }
+            }
         }
+        if (p.eyes == "tear") { h(7 + l, 8, 1, 2, TEAR); h(12 + l, 8, 1, 2, TEAR) }
         h(10, 8, 1, 2, SKIN_SH)
         when (p.mouth) {
+            "grin" -> { h(8, 9, 5, 2, M_IN); h(9, 9, 3, 1, Color.WHITE) }
+            "tongue" -> { h(9, 9, 3, 1, M_IN); h(10, 10, 1, 1, TONGUE) }
             "smile" -> { h(9, 10, 3, 1, MOUTH); h(8, 9, 1, 1, MOUTH); h(12, 9, 1, 1, MOUTH) }
             "open" -> h(9, 9, 3, 2, M_IN)
             "o" -> h(10, 9, 1, 2, M_IN)
@@ -194,11 +234,14 @@ object Sprite {
         val l = if (p.look < 0) 0 else 1
         if (p.eyes == "closed") { h(7, 7, 2, 1, LID); h(12, 7, 2, 1, LID) }
         else {
-            h(7, 7, 2, 1, CH_LID); h(12, 7, 2, 1, CH_LID); h(7 + l, 8, 1, 1, EYE); h(12 + l, 8, 1, 1, EYE)
+            val pc = if (p.eyes == "sparkle") SPARK else EYE
+            h(7, 7, 2, 1, CH_LID); h(12, 7, 2, 1, CH_LID); h(7 + l, 8, 1, 1, pc)
+            if (p.eyes == "wink") h(12, 8, 2, 1, LID) else h(12 + l, 8, 1, 1, pc)
             if (p.eyes == "wide") { h(7 + l, 7, 1, 1, EYE); h(12 + l, 7, 1, 1, EYE) }
+            if (p.eyes == "tear") { h(7 + l, 9, 1, 2, TEAR); h(12 + l, 9, 1, 2, TEAR) }
         }
         h(9, 8, 4, 1, BEAK); h(13, 8, 1, 1, BEAK_SH)
-        val open = p.mouth == "open" || p.mouth == "o"
+        val open = p.mouth == "open" || p.mouth == "o" || p.mouth == "grin" || p.mouth == "tongue"
         if (open) { h(10, 9, 3, 1, M_IN); h(10, 10, 3, 1, BEAK_SH) } else h(10, 9, 3, 1, BEAK_SH)
         h(10, if (open) 11 else 10, 2, 2, COMB); h(12, 10, 1, 1, COMB)
         h(6, 9, 2, 1, BLUSH); h(14, 9, 2, 1, BLUSH)
