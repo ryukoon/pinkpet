@@ -24,7 +24,7 @@ class Move(
     val spin: Float = 0f, val roll: Float = 0f, val jitter: Boolean = false,
     val hop: Float = 0f, val hopRate: Float = 0f, val float: Float = 0f,
     val switchAt: Float = 99f, val frames2: List<Pose>? = null,
-    val events: List<Pair<Float, String>> = emptyList(), val chicken: Boolean = false
+    val events: List<Pair<Float, String>> = emptyList(), val chicken: Boolean = false, val spicy: Boolean = false
 )
 
 
@@ -38,7 +38,9 @@ interface CharDef {
     val specials: List<Pair<String, String>>
     val moves: LinkedHashMap<String, Move>
     fun render(p: Pose, f: Form, nowMs: Long): Bitmap
-    val menu: List<Pair<String, String>> get() = specials + moves.map { (k, m) -> k to (if (m.chicken) "🐔 " else "") + m.label }
+    /** 캐릭터 크기 배율 (수아는 아이라서 작게) */
+    val scale: Float get() = 1f
+    val menu: List<Pair<String, String>> get() = specials + moves.filter { !it.value.spicy || Engine.spicyOn }.map { (k, m) -> k to (if (m.chicken) "🐔 " else "") + m.label }
 }
 
 object PinkDef : CharDef {
@@ -67,7 +69,27 @@ object BearDef : CharDef {
     override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = BearSprite.render(p, f, nowMs)
 }
 
-object Chars {
-    val all: List<CharDef> = listOf(BearDef, PinkDef)
-    fun byId(id: String?): CharDef? = all.firstOrNull { it.id == id }
+object SuaDef : CharDef {
+    override val id = "sua"
+    override val name = "수아"
+    override val tapSay = "엄마 안아줘!"
+    override val sleepMin = 8f
+    override val sleepMax = 12f
+    override val scale = .82f
+    override val specials = listOf("idle" to "가만히", "walk" to "콩콩 걷기", "run" to "뛰어다니기", "jump" to "점프", "sit" to "앉기",
+        "sleep" to "쿨쿨 자기", "wave" to "손인사", "dance" to "신나는 춤", "look" to "두리번", "stretch" to "기지개")
+    override val moves get() = SuaMoves.all
+    override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = SuaSprite.render(p)
+}
+
+object MomDef : CharDef {
+    override val id = "mom"
+    override val name = "수아 엄마"
+    override val tapSay = "음, 그렇군."
+    override val sleepMin = 7f
+    override val sleepMax = 11f
+    override val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "뛰기", "jump" to "점프", "sit" to "앉기",
+        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개")
+    override val moves get() = MomMoves.all
+    override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = MomSprite.render(p)
 }

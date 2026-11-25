@@ -33,6 +33,10 @@ class ActDef(val label: String, val d0: Float, val d1: Float, val w: Float, val 
 
 /** 펫의 움직임·모션·효과를 모두 계산하는 두뇌 */
 class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef, private val openMenu: () -> Unit) {
+    companion object { @Volatile var spicyOn = false }
+    // 나중에 말하기 (상호작용용)
+    private val later = ArrayList<Pair<Float, String>>()
+    fun sayLater(text: String, delay: Float) { later.add(clock + delay to text) }
     private val D = density
     var SC = 2f * D
     private val G get() = 2600f * D
@@ -182,6 +186,7 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
     private fun weightOf(k: String): Float {
         val ch = form == Form.CHICKEN
         val mv = def.moves[k]
+        if (mv != null && mv.spicy && !spicyOn) return 0f
         if (mv != null) return if (mv.chicken) (if (ch) mv.w else 0f) else (if (ch) mv.w * .4f else mv.w)
         if (k in chickenOnly) return if (ch) acts.getValue(k).w else 0f
         return acts.getValue(k).w
@@ -344,6 +349,7 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
 
         ballUpdate(dt)
         // 효과 갱신
+        if (later.isNotEmpty()) { val due = later.filter { it.first <= clock }; if (due.isNotEmpty()) { later.removeAll(due.toSet()); if (state != "away") say(due.last().second, 1.8f) } }
         if (bubbleT > 0) bubbleT -= dt
         floaters.forEach { it.age += dt }; floaters.removeAll { it.age > (if (it.kind == "z") 1.8f else 1.2f) }
         cracks.forEach { it.age += dt }; cracks.removeAll { it.age > 4.3f }

@@ -24,11 +24,12 @@ import android.widget.TextView
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var soundBtn: Button
+    private var spicyBtn: Button? = null
     private lateinit var grid: GridLayout
     private lateinit var motionTitle: TextView
     private val toggles = HashMap<String, Button>()
     private val pickers = HashMap<String, Button>()
-    private var target: CharDef = BearDef
+    private var target: CharDef = Roster.all.first()
     private val dp get() = resources.displayMetrics.density
     private val purple = Color.parseColor("#5d3f82")
     private val brown = Color.parseColor("#8a5a2b")
@@ -38,14 +39,15 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Chars.byId(intent?.getStringExtra("pet"))?.let { target = it }
+        Roster.byId(intent?.getStringExtra("pet"))?.let { target = it }
+        Engine.spicyOn = prefs.getBoolean("spicy", false)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding((20 * dp).toInt(), (24 * dp).toInt(), (20 * dp).toInt(), (32 * dp).toInt())
             setBackgroundColor(Color.parseColor("#f7eef2"))
         }
-        root.addView(text("펫 친구들 🐻🐔", 26f, true, darkC))
-        root.addView(text("여유곰과 진행해줘 부장님이 홈 화면과 다른 앱 위를 돌아다녀요. 둘 다 켜두면 만났을 때 서로 알아봐요.", 14f, false, Color.DKGRAY))
+        root.addView(text(Roster.title, 26f, true, darkC))
+        root.addView(text(Roster.subtitle, 14f, false, Color.DKGRAY))
         status = text("", 14f, true, purple); root.addView(status)
 
         root.addView(section("1. 처음 한 번만 설정"))
@@ -58,19 +60,19 @@ class MainActivity : Activity() {
         root.addView(button("배터리 제한 해제 (꺼짐 방지)", purple) { askBattery() })
 
         root.addView(section("2. 펫 켜기 / 끄기"))
-        for (def in Chars.all) {
+        for (def in Roster.all) {
             val b = button("", brown) { togglePet(def) }
             toggles[def.id] = b; root.addView(b)
         }
         root.addView(button("모두 끄기", grey) {
-            for (def in Chars.all) prefs.edit().putBoolean("on_${def.id}", false).apply()
+            for (def in Roster.all) prefs.edit().putBoolean("on_${def.id}", false).apply()
             if (PetService.running) startService(Intent(this, PetService::class.java).setAction(PetService.ACTION_STOP))
             status.postDelayed({ refresh() }, 400)
         })
 
         motionTitle = section(""); root.addView(motionTitle)
         val pickRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        for (def in Chars.all) {
+        for (def in Roster.all) {
             val b = button(def.name, brown) { target = def; buildGrid(); refresh() }
             b.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins((3 * dp).toInt(), 0, (3 * dp).toInt(), 0) }
             pickers[def.id] = b; pickRow.addView(b)
@@ -91,7 +93,13 @@ class MainActivity : Activity() {
             })
         }
         root.addView(sizeRow)
-        root.addView(text("· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 인사해요. 잡고 던지면 떨어져서 띠용~ 해요.\n· 둘이 부딪히면 튕겨 나가거나, 인사·하이파이브·춤·치킨 파티를 해요.\n· 곰이 유리를 깨면 부장님이 \"누구야!!\" 하고 달려와요.\n· 부장님이 닭이 되면 곰이 쫓아가요.", 13f, false, Color.DKGRAY))
+        if (Roster.hasSpicy) {
+            spicyBtn = button("", purple) {
+                prefs.edit().putBoolean("spicy", !prefs.getBoolean("spicy", false)).apply()
+                Engine.spicyOn = prefs.getBoolean("spicy", false); buildGrid(); refresh(); notifyPrefs()
+            }.also { root.addView(it) }
+        }
+        root.addView(text(Roster.hints, 13f, false, Color.DKGRAY))
 
         setContentView(ScrollView(this).apply { addView(root) })
         buildGrid()
@@ -99,7 +107,7 @@ class MainActivity : Activity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        Chars.byId(intent.getStringExtra("pet"))?.let { target = it; buildGrid(); refresh() }
+        Roster.byId(intent.getStringExtra("pet"))?.let { target = it; buildGrid(); refresh() }
     }
 
     override fun onResume() { super.onResume(); refresh() }
@@ -119,13 +127,14 @@ class MainActivity : Activity() {
     private fun refresh() {
         val overlay = Settings.canDrawOverlays(this)
         status.text = if (!overlay) "⚠ 먼저 '다른 앱 위에 표시' 권한을 켜주세요" else if (PetService.running) "● 펫이 돌아다니는 중" else "○ 펫이 꺼져 있어요"
-        for (def in Chars.all) {
+        for (def in Roster.all) {
             val on = PetService.running && PetService.isOn(this, def.id)
             toggles[def.id]?.text = if (on) "${def.name}: 켜짐 ● (눌러서 끄기)" else "${def.name}: 꺼짐 (눌러서 켜기)"
             (toggles[def.id]?.background as? GradientDrawable)?.setColor(if (on) brown else grey)
             (pickers[def.id]?.background as? GradientDrawable)?.setColor(if (def == target) brown else grey)
         }
         motionTitle.text = "3. ${target.name} 모션 (${target.menu.size}종)"
+        spicyBtn?.text = if (prefs.getBoolean("spicy", false)) "🌶 엄마 매운맛 대사: 켜짐 (눌러서 끄기)" else "🌶 엄마 매운맛 대사: 꺼짐 (아이 앞에선 끄기 추천)"
         soundBtn.text = if (prefs.getBoolean("sound", true)) "소리 켜짐 🔊 (눌러서 끄기)" else "소리 꺼짐 🔇 (눌러서 켜기)"
     }
 
@@ -136,7 +145,7 @@ class MainActivity : Activity() {
         val nowOn = PetService.running && PetService.isOn(this, def.id)
         if (!PetService.running) {
             // 서비스가 꺼져 있으면: 이 펫만 켜고 시작
-            for (d in Chars.all) prefs.edit().putBoolean("on_${d.id}", d == def).apply()
+            for (d in Roster.all) prefs.edit().putBoolean("on_${d.id}", d == def).apply()
             startForegroundService(Intent(this, PetService::class.java).setAction(PetService.ACTION_START))
         } else {
             prefs.edit().putBoolean("on_${def.id}", !nowOn).apply()

@@ -24,9 +24,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
-import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.random.Random
 
 /** 다른 앱 위에 펫(여유곰, 부장님)을 띄우는 서비스 */
 class PetService : Service() {
@@ -40,7 +38,7 @@ class PetService : Service() {
         fun isOn(ctx: Context, id: String) = ctx.getSharedPreferences("pet", MODE_PRIVATE).getBoolean("on_$id", true)
     }
 
-    private class Pet(val engine: Engine, val view: View, val lp: WindowManager.LayoutParams)
+    private class Pet(val engine: Engine, val view: View, val lp: WindowManager.LayoutParams) { var w = 0; var h = 0; var feet = 0f }
 
     private lateinit var wm: WindowManager
     private lateinit var wctx: Context
@@ -50,9 +48,7 @@ class PetService : Service() {
     private val pets = LinkedHashMap<String, Pet>()
     private var lastFrameNs = 0L
     private var attached = false
-    private var petW = 0; private var petH = 0; private var feetY = 0f
     private var screenW = 0f; private var screenH = 0f; private var floorY = 0f; private var gridPx = 0f
-    private var interCool = 3f
 
     private val frame = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
@@ -61,7 +57,7 @@ class PetService : Service() {
             lastFrameNs = frameTimeNanos
             val now = System.currentTimeMillis()
             for (p in pets.values) { p.engine.update(dt, now); movePet(p) }
-            interactions(minOf(dt, .05f))
+            Roster.tick(pets.mapValues { it.value.engine }, minOf(dt, .05f), gridPx)
             fxView.invalidate()
             for (p in pets.values) p.view.invalidate()
             Choreographer.getInstance().postFrameCallback(this)
@@ -113,7 +109,7 @@ class PetService : Service() {
         val stop = PendingIntent.getService(this, 1, Intent(this, PetService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)
         val n = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle("펫 친구들이 돌아다니는 중")
+            .setContentTitle(Roster.notif)
             .setContentText("눌러서 펫 켜기/끄기, 모션 메뉴 열기")
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "모두 끄기", stop).build())
@@ -124,7 +120,9 @@ class PetService : Service() {
     }
 
     private fun applyPrefs() {
-        sfx.enabled = getSharedPreferences("pet", MODE_PRIVATE).getBoolean("sound", true)
+        val prefs = getSharedPreferences("pet", MODE_PRIVATE)
+        sfx.enabled = prefs.getBoolean("sound", true)
+        Engine.spicyOn = prefs.getBoolean("spicy", false)
     }
 
     private fun baseLp(w: Int, h: Int, touchable: Boolean): WindowManager.LayoutParams {
@@ -149,14 +147,12 @@ class PetService : Service() {
         gridPx = getSharedPreferences("pet", MODE_PRIVATE).getFloat("size", 2f) * d
         screenW = b.width().toFloat(); screenH = b.height().toFloat(); floorY = b.height() - nav.bottom - 6 * d
         fxLp.width = b.width(); fxLp.height = b.height(); fxLp.x = 0; fxLp.y = 0
-        petW = (32 * gridPx).roundToInt(); petH = (38 * gridPx).roundToInt(); feetY = 29 * gridPx
     }
 
     private fun relayout() {
         try { wm.updateViewLayout(fxView, fxLp) } catch (_: Exception) { }
         for (p in pets.values) {
-            p.engine.setScreen(screenW, screenH, floorY, gridPx)
-            p.lp.width = petW; p.lp.height = petH
+            sizePet(p)
             computePos(p)
             try { wm.updateViewLayout(p.view, p.lp) } catch (_: Exception) { }
         }
@@ -165,7 +161,7 @@ class PetService : Service() {
     /** 설정에 맞게 펫을 추가/제거. 하나도 없으면 서비스 종료 */
     @SuppressLint("ClickableViewAccessibility")
     private fun syncPets() {
-        for (def in Chars.all) {
+        for (def in Roster.all) {
             val on = isOn(this, def.id)
             val existing = pets[def.id]
             if (on && existing == null) {
@@ -174,8 +170,9 @@ class PetService : Service() {
                 val view = object : View(wctx) {
                     override fun onDraw(canvas: Canvas) { engine.drawPet(canvas, pet.lp.x.toFloat(), pet.lp.y.toFloat(), System.currentTimeMillis()) }
                 }
-                val lp = baseLp(petW, petH, true)
+                val lp = baseLp(1, 1, true)
                 pet = Pet(engine, view, lp)
+                sizePet(pet)
                 view.setOnTouchListener { _, e ->
                     when (e.actionMasked) {
                         MotionEvent.ACTION_DOWN -> engine.onDown(e.rawX, e.rawY)
@@ -184,8 +181,7 @@ class PetService : Service() {
                     }
                     true
                 }
-                engine.setScreen(screenW, screenH, floorY, gridPx)
-                engine.spawn(if (def.id == "bear") .3f else .7f)
+                engine.spawn(Roster.spawnFrac(def.id))
                 computePos(pet)
                 wm.addView(view, lp)
                 pets[def.id] = pet
@@ -194,15 +190,21 @@ class PetService : Service() {
                 pets.remove(def.id)
             }
         }
-        // 서로 알아보기: 한쪽이 화면을 깨면 다른 쪽이 반응
-        pets["bear"]?.engine?.onCrash = { cx -> pets["pink"]?.engine?.interact("run", cx, "누구야!! 유리 누가 깼어!!") }
-        pets["pink"]?.engine?.onCrash = { cx -> pets["bear"]?.engine?.interact("look", cx, "부장님… 화면이…") }
+        Roster.hook(pets.mapValues { it.value.engine })
         if (pets.isEmpty()) stopSelf()
     }
 
+    /** 캐릭터 배율에 맞춰 펫 창 크기 계산 */
+    private fun sizePet(p: Pet) {
+        val g = gridPx * p.engine.def.scale
+        p.engine.setScreen(screenW, screenH, floorY, g)
+        p.w = (32 * g).roundToInt(); p.h = (38 * g).roundToInt(); p.feet = 29 * g
+        p.lp.width = p.w; p.lp.height = p.h
+    }
+
     private fun computePos(p: Pet): Boolean {
-        val nx = (p.engine.x - petW / 2f).roundToInt()
-        val ny = (p.engine.drawY - feetY).roundToInt()
+        val nx = (p.engine.x - p.w / 2f).roundToInt()
+        val ny = (p.engine.drawY - p.feet).roundToInt()
         if (nx == p.lp.x && ny == p.lp.y) return false
         p.lp.x = nx; p.lp.y = ny
         return true
@@ -210,39 +212,6 @@ class PetService : Service() {
 
     private fun movePet(p: Pet) {
         if (computePos(p)) try { wm.updateViewLayout(p.view, p.lp) } catch (_: Exception) { }
-    }
-
-    /** 두 펫이 만나면 서로 반응 */
-    private fun interactions(dt: Float) {
-        val bear = pets["bear"]?.engine ?: return
-        val pink = pets["pink"]?.engine ?: return
-        interCool -= dt
-        if (interCool > 0) return
-        if (bear.stateName == "away" || pink.stateName == "away") return
-        val dx = abs(bear.x - pink.x); val dy = abs(bear.y - pink.y)
-        if (dx > 13 * gridPx || dy > 18 * gridPx) return
-        interCool = 7f
-        val moving = setOf("air", "drag")
-        if (bear.stateName in moving || pink.stateName in moving || bear.actName == "run" || pink.actName == "run") {
-            // 부딪히면 둘 다 띠용~ 튕겨나감
-            bear.bump(pink.x); pink.bump(bear.x)
-            return
-        }
-        if (!bear.canInteract || !pink.canInteract) { interCool = 2f; return }
-        if (pink.isChicken) {
-            bear.interact("run", pink.x, "치킨이다!! 🍗")
-            pink.interact("cfly", bear.x, "꼬꼬댁!! 살려줘~")
-            return
-        }
-        val midX = (bear.x + pink.x) / 2; val topY = minOf(bear.y, pink.y) - 24 * gridPx
-        when (Random.nextInt(6)) {
-            0 -> { bear.interact("bow", pink.x, "부장님 안녕하세요~"); pink.interact("wave", bear.x, "어 왔어? 진행해줘!") }
-            1 -> { bear.interact("pawWave", pink.x, "하이파이브!"); pink.interact("wave", bear.x, null); bear.popAt("짝!", midX, topY) }
-            2 -> { bear.interact("dance", pink.x, "🎵 같이 춰요~"); pink.interact("dance", bear.x, "오 좋아!") }
-            3 -> { pink.interact("boxing", bear.x, "덤벼라!"); bear.interact("kungfu", pink.x, "곰발 펀치!") }
-            4 -> { pink.interact("chickenEat", bear.x, "치킨 먹을래?"); bear.interact("chickenEat", pink.x, "좋아요!! 🍗") }
-            else -> { bear.bump(pink.x); pink.bump(bear.x); bear.talk("앗 죄송!"); pink.talk("어이쿠!") }
-        }
     }
 
     private fun openMenu(id: String) {

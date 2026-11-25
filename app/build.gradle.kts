@@ -8,12 +8,10 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.ryukoon.petfriends"
-        manifestPlaceholders["appLabel"] = "펫 친구들"
         minSdk = 30
         targetSdk = 35
-        versionCode = 4
-        versionName = "2.0"
+        versionCode = 5
+        versionName = "2.1"
     }
 
     // 매번 같은 키로 서명 → 새 버전을 덮어서 설치 가능
@@ -23,6 +21,20 @@ android {
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+        }
+    }
+
+    flavorDimensions += "app"
+    productFlavors {
+        create("friends") {
+            dimension = "app"
+            applicationId = "com.ryukoon.petfriends"
+            manifestPlaceholders["appLabel"] = "펫 친구들"
+        }
+        create("family") {
+            dimension = "app"
+            applicationId = "com.ryukoon.suafamily"
+            manifestPlaceholders["appLabel"] = "수아네 펫"
         }
     }
 
