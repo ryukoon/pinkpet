@@ -25,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var soundBtn: Button
     private var spicyBtn: Button? = null
+    private lateinit var iconBtn: Button
     private lateinit var grid: GridLayout
     private lateinit var motionTitle: TextView
     private val toggles = HashMap<String, Button>()
@@ -58,6 +59,8 @@ class MainActivity : Activity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         })
         root.addView(button("배터리 제한 해제 (꺼짐 방지)", purple) { askBattery() })
+        iconBtn = button("", purple) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }.also { root.addView(it) }
+        root.addView(text("↑ 홈 화면 앱 아이콘 위에 올라타게 하려면 켜세요. 접근성 > 설치된 앱 > 이 앱 > 사용. 아이콘 위치만 읽고 다른 내용은 저장하지 않아요.\n'제한된 설정' 안내가 뜨면: 설정 > 애플리케이션 > 이 앱 > 오른쪽 위 ⋮ > 제한된 설정 허용 후 다시 켜세요.", 12f, false, Color.DKGRAY))
 
         root.addView(section("2. 펫 켜기 / 끄기"))
         for (def in Roster.all) {
@@ -133,6 +136,7 @@ class MainActivity : Activity() {
             (toggles[def.id]?.background as? GradientDrawable)?.setColor(if (on) brown else grey)
             (pickers[def.id]?.background as? GradientDrawable)?.setColor(if (def == target) brown else grey)
         }
+        iconBtn.text = if (IconMap.connected) "아이콘 위 올라타기: 켜짐 ✅" else "아이콘 위 올라타기 켜기 (접근성)"
         motionTitle.text = "3. ${target.name} 모션 (${target.menu.size}종)"
         spicyBtn?.text = if (prefs.getBoolean("spicy", false)) "🌶 엄마 매운맛 대사: 켜짐 (눌러서 끄기)" else "🌶 엄마 매운맛 대사: 꺼짐 (아이 앞에선 끄기 추천)"
         soundBtn.text = if (prefs.getBoolean("sound", true)) "소리 켜짐 🔊 (눌러서 끄기)" else "소리 꺼짐 🔇 (눌러서 켜기)"

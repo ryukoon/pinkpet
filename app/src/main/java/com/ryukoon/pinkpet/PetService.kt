@@ -48,6 +48,7 @@ class PetService : Service() {
     private val pets = LinkedHashMap<String, Pet>()
     private var lastFrameNs = 0L
     private var attached = false
+    private var iconVer = -1
     private var screenW = 0f; private var screenH = 0f; private var floorY = 0f; private var gridPx = 0f
 
     private val frame = object : Choreographer.FrameCallback {
@@ -56,6 +57,12 @@ class PetService : Service() {
             val dt = if (lastFrameNs == 0L) 0.016f else (frameTimeNanos - lastFrameNs) / 1e9f
             lastFrameNs = frameTimeNanos
             val now = System.currentTimeMillis()
+            if (IconMap.version != iconVer) {
+                iconVer = IconMap.version
+                val d = resources.displayMetrics.density
+                val list = IconMap.rects.filter { it.top < floorY - 30 * d }.map { Plat(it.left + 8 * d, it.right - 8 * d, it.top + 6 * d, false) }
+                for (p in pets.values) p.engine.setIcons(list)
+            }
             for (p in pets.values) { p.engine.update(dt, now); movePet(p) }
             Roster.tick(pets.mapValues { it.value.engine }, minOf(dt, .05f), gridPx)
             fxView.invalidate()
@@ -182,6 +189,7 @@ class PetService : Service() {
                     true
                 }
                 engine.spawn(Roster.spawnFrac(def.id))
+                iconVer = -1
                 computePos(pet)
                 wm.addView(view, lp)
                 pets[def.id] = pet

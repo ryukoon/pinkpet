@@ -105,6 +105,19 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
     private fun rnd(a: Float, b: Float) = a + Random.nextFloat() * (b - a)
     private fun fl(v: Float) = kotlin.math.floor(v).toInt()
 
+    /** 홈 화면 아이콘 발판 (접근성 서비스가 알려줌) */
+    private var icons: List<Plat> = emptyList()
+    fun setIcons(list: List<Plat>) {
+        icons = list
+        val p = plat
+        if (p != null && !p.floor && state != "drag") {
+            // 서 있던 아이콘이 그대로 있으면 새 위치로, 없어졌으면(앱 실행·페이지 넘김) 떨어지기
+            val same = list.firstOrNull { abs(it.y - p.y) < 6 * D && x >= it.x1 - 4 * D && x <= it.x2 + 4 * D }
+            if (same != null) { plat = same; if (state == "act" || state == "land") y = same.y }
+            else if (state == "act" || state == "land") { say(listOf("어어?!", "으앗!", "발판이 사라졌다!").random(), 1f); goAir(0f, -60 * D, "fall") }
+        }
+    }
+
     fun setScreen(w: Float, h: Float, floorY: Float, gridPx: Float) {
         W = w; H = h; SC = gridPx
         floor = Plat(-1e6f, 1e6f, floorY, true)
@@ -201,12 +214,31 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
     }
 
     private fun planJump() {
-        val tx = (x + dir * rnd(40f, 110f) * D).coerceIn(minX, maxX)
-        val hgt = 55f * D * rnd(.8f, 1.6f)
-        jvy = -sqrt(2 * G * hgt)
-        val tt = 2 * sqrt(2 * hgt / G)
+        // 가까운 아이콘으로 뛰어오르기
+        val cand = icons.filter { it != plat && y - it.y < 320 * D && y - it.y > -500 * D && abs((it.x1 + it.x2) / 2 - x) < 340 * D }.toMutableList()
+        if (plat != null && plat?.floor != true && Random.nextFloat() < .35f) cand.add(floor)
+        var tx = (x + dir * rnd(40f, 110f) * D).coerceIn(minX, maxX)
+        var ty = y
+        if (cand.isNotEmpty() && Random.nextFloat() < .75f) {
+            val p = cand.random()
+            if (p.floor) tx = (x + rnd(-160f, 160f) * D).coerceIn(minX, maxX) else tx = rnd(p.x1 + 6 * D, p.x2 - 6 * D)
+            ty = p.y
+        }
+        val h = y - ty
+        val top = max(h, 0f) + 55f * D
+        jvy = -sqrt(2 * G * top)
+        val tt = sqrt(2 * top / G) + sqrt(2 * (top - h) / G)
         jvx = (tx - x) / tt
         if (abs(jvx) > 5) dir = sign(jvx).toInt()
+    }
+
+    /** 아이콘 끝에서 떨어질지 */
+    private fun offEdge(nx: Float, sp: Float, sd: Int): Boolean {
+        val p = plat ?: return false
+        if (p.floor || (nx >= p.x1 && nx <= p.x2)) return false
+        if (edge == null) edge = Random.nextFloat() < .5f
+        if (edge == true) { dir = -dir; edge = null; return true }
+        x = nx; say("어어?!", 1f); goAir(sd * sp * .7f, -80 * D, "fall"); return true
     }
 
     private fun goAir(nvx: Float, nvy: Float, kind: String) { state = "air"; vx = nvx; vy = nvy; plat = null; airKind = kind }
@@ -214,6 +246,7 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
     private fun groundMove(sp: Float, dt: Float) {
         val nx = x + dir * sp * D * dt
         if (nx < minX || nx > maxX) { dir = -dir; return }
+        if (offEdge(nx, sp * D, dir)) return
         x = nx
     }
 
@@ -296,6 +329,10 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
                 }
             }
         }
+        run {
+            val pl = plat
+            if (state == "act" && pl != null && !pl.floor && (x < pl.x1 - 3 * D || x > pl.x2 + 3 * D)) goAir(dir * 120 * D, -60 * D, "fall")
+        }
         if (state == "drag") {
             dTime += dt
             if (!longFired && dMoved < 10 * D && dTime > .6f) {
@@ -314,10 +351,16 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
             }
         }
         if (state == "air") {
+            val py = y
             vy += G * dt; x += vx * dt; y += vy * dt
             if (x < minX) { x = minX; vx = -vx * .5f; dir = 1 }
             if (x > maxX) { x = maxX; vx = -vx * .5f; dir = -1 }
-            if (vy > 0 && y >= floor.y) land(floor)
+            if (vy > 0) {
+                var hit: Plat? = null
+                for (q in icons) if (py <= q.y + 1 && y >= q.y && x >= q.x1 && x <= q.x2 && (hit == null || q.y < hit.y)) hit = q
+                if (hit == null && y >= floor.y) hit = floor
+                if (hit != null) land(hit)
+            }
             if (state == "air") {
                 val f = ((nowMs / 90) % 2).toInt()
                 p = if (airKind == "jump" && vy < 0) Pose(aL = "up", aR = "up", legs = "tuck", mouth = "smile", sy = 1.08f, sx = .94f)
@@ -573,7 +616,9 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
         if (mv.move > 0f) {
             val sd = if (mv.back) -dir else dir
             val nx = x + sd * mv.move * D * dt
-            if (nx < minX || nx > maxX) dir = -dir else x = nx
+            if (nx < minX || nx > maxX) dir = -dir
+            else if (!offEdge(nx, mv.move * D, sd)) x = nx
+            if (state != "act") return
         }
         while (evIdx < mv.events.size && t >= mv.events[evIdx].first) {
             val cmd = mv.events[evIdx].second; evIdx++
@@ -685,7 +730,10 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
         }
         // 그림자
         if (state != "away") {
-            val gy = floor.y; val dist = max(0f, gy - y)
+            var gy = floor.y
+            if (state == "act" || state == "land") gy = plat?.y ?: floor.y
+            else for (q in icons) if (q.y >= y - 2 && x >= q.x1 && x <= q.x2 && q.y < gy) gy = q.y
+            val dist = max(0f, gy - drawY)
             val w = max(16 * D, (if (pose.lying) 17 else 12) * SC - dist * .08f)
             fill.color = Color.argb((90 * max(.2f, 1 - dist / (400 * D))).toInt(), 30, 10, 40)
             tmpRect.set(x - w / 2, gy - 4 * D, x + w / 2, gy + 4 * D); c.drawOval(tmpRect, fill)
