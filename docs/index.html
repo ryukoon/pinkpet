@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="펫 친구들">
+<meta name="theme-color" content="#2d2552">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>펫 친구들</title>
+<style>
+/* VOICE: 장난스러운 8bit 다마고치
+   IDEA: 폰 홈 화면 위를 돌아다니는 펫 친구들
+   PICTURE: 여유곰과 부장님 도트 캐릭터, 아이콘이 발판
+   COLOUR/TYPE: 보랏빛 노을 배경, 픽셀 외곽선 글자
+   LAYOUT: 시계 위젯, 아이콘 그리드, 독, 모션 패널 */
+*{box-sizing:border-box;margin:0;padding:0;min-width:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;overflow:hidden;touch-action:none;overscroll-behavior:none}
+body{font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#fff;background:linear-gradient(172deg,#2d2552 0%,#5d3f82 40%,#b56a9a 75%,#f1a7a0 100%)}
+#screen{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.widget{margin:22px 22px 4px}
+.clock{font-size:clamp(46px,12vw,78px);font-weight:200;letter-spacing:-2px;line-height:1}
+.date{opacity:.85;margin-top:6px;font-size:15px}
+.grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));align-content:start;gap:30px 4px;padding:28px 12px 10px;overflow:hidden}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.ibox{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;font-size:27px;box-shadow:0 4px 10px rgba(0,0,0,.25),inset 0 -3px 0 rgba(0,0,0,.12)}
+.ibox.hit,.dock.hit{animation:hit .55s}
+@keyframes hit{0%{transform:scale(1)}22%{transform:scale(1.12,.8)}50%{transform:scale(.94,1.08)}75%{transform:scale(1.03,.97)}100%{transform:scale(1)}}
+.dock{margin:0 12px calc(12px + env(safe-area-inset-bottom));padding:12px 8px;border-radius:30px;background:rgba(255,255,255,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;justify-content:space-around}
+.pet{position:fixed;left:0;top:0;z-index:10;touch-action:none;cursor:grab}
+.pet canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.shadow{position:fixed;left:0;top:0;z-index:8;height:8px;border-radius:50%;background:rgba(30,10,40,.35);pointer-events:none}
+.aura{position:fixed;left:0;top:0;z-index:9;display:none;pointer-events:none;border-radius:50% 50% 42% 42%;background:radial-gradient(ellipse at 50% 72%,rgba(255,235,245,.9) 0,rgba(255,110,165,.7) 30%,rgba(255,50,110,.3) 52%,transparent 70%);animation:flick .11s infinite alternate}
+@keyframes flick{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+#ball{position:fixed;left:0;top:0;z-index:9;display:none;image-rendering:pixelated;pointer-events:none}
+.fl{position:fixed;z-index:12;pointer-events:none;font-weight:900;font-size:18px;color:#fff;white-space:nowrap;transform:translate(-50%,0);
+text-shadow:2px 0 #2a1f3d,-2px 0 #2a1f3d,0 2px #2a1f3d,0 -2px #2a1f3d,2px 2px #2a1f3d;animation:up 1.2s ease-out forwards}
+.fl.boing{font-size:26px;color:#ffe45e;animation:boing 1.1s ease-out forwards}
+.fl.z{font-size:16px;color:#cfe3ff;animation:zz 1.8s ease-out forwards}
+@keyframes up{0%{opacity:0;transform:translate(-50%,8px) scale(.6)}15%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-46px)}}
+@keyframes boing{0%{opacity:0;transform:translate(-50%,0) scale(.3,1.6)}18%{opacity:1;transform:translate(-50%,-10px) scale(1.35,.75)}34%{transform:translate(-50%,-14px) scale(.85,1.2)}50%{transform:translate(-50%,-16px) scale(1.08,.94)}70%{opacity:1;transform:translate(-50%,-20px) scale(1)}100%{opacity:0;transform:translate(-50%,-40px)}}
+@keyframes zz{0%{opacity:0;transform:translate(-50%,0)}20%{opacity:1}100%{opacity:0;transform:translate(10px,-50px) scale(1.4)}}
+.bubble{position:fixed;left:0;top:0;z-index:12;display:none;pointer-events:none;background:#fff;color:#2a1f3d;font-size:14px;font-weight:800;padding:5px 10px;border:3px solid #2a1f3d;box-shadow:3px 3px 0 rgba(0,0,0,.25);white-space:nowrap}
+.crack{position:fixed;z-index:15;pointer-events:none;transition:opacity 1s}
+.shard{position:fixed;z-index:16;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(190,225,255,.75));box-shadow:0 0 2px rgba(30,20,60,.6)}
+.flash{position:fixed;inset:0;z-index:14;background:#fff;pointer-events:none}
+#menuBtn{position:fixed;right:14px;top:calc(16px + env(safe-area-inset-top));z-index:20;height:44px;padding:0 14px;border:3px solid #fff;background:#2a1f3d;color:#fff;font-weight:800;font-size:14px;box-shadow:3px 3px 0 rgba(0,0,0,.3)}
+#panel{position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;width:min(94vw,600px);background:rgba(34,24,56,.96);border:3px solid #fff;box-shadow:5px 5px 0 rgba(0,0,0,.3);padding:12px;display:none;flex-direction:column;gap:9px;touch-action:pan-y}
+#panel.on{display:flex}
+#panel h2{font-size:16px}
+.row{display:flex;gap:7px;flex-wrap:wrap}
+.row button{flex:1}
+button{font:inherit;min-height:44px;border:2px solid #fff;background:#5d3f82;color:#fff;font-weight:800;font-size:13px;padding:0 8px}
+button.on{background:#8a5a2b}button.off{background:#55506a;color:#cfc9e0}
+button:active{filter:brightness(1.3)}
+#moves{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-content:start;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+@media(max-width:420px){#moves{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#moves button{min-height:42px;font-size:12.5px;line-height:1.2}
+.hint{font-size:12px;opacity:.8;line-height:1.45}
+#intro{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(20,14,36,.72);padding:24px}
+#intro .card{background:#fff;color:#2a1f3d;border:3px solid #2a1f3d;box-shadow:6px 6px 0 rgba(0,0,0,.35);padding:20px;max-width:380px;line-height:1.55;font-size:15px}
+#intro h1{font-size:22px;margin-bottom:8px}#intro button{width:100%;margin-top:14px;background:#8a5a2b;font-size:16px}
+#intro ol{padding-left:20px;margin-top:8px;font-size:14px}
+</style></head><body>
+<div id="screen">
+  <div class="widget"><div class="clock" id="clock">12:00</div><div class="date" id="date"></div></div>
+  <div class="grid" id="grid"></div>
+  <div class="dock" id="dock"></div>
+</div>
+<canvas id="ball" width="8" height="8"></canvas>
+<button id="menuBtn">🎮 메뉴</button>
+<div id="panel">
+  <h2>펫 친구들 🐻🐔</h2>
+  <div class="row" id="toggles"></div>
+  <div class="row" id="pickers"></div>
+  <div class="row"><button id="rand">🎲 랜덤 모션</button><button id="snd">소리 켜짐</button></div>
+  <div class="row" id="sizes"></div>
+  <div id="moves"></div>
+  <p class="hint">톡: 인사 · 잡고 던지기: 띠용~ · 꾹 누르기: 이 메뉴 · 둘을 같이 켜두면 만났을 때 서로 반응해요.</p>
+</div>
+<div id="intro"><div class="card">
+  <h1>펫 친구들 🐻🐔</h1>
+  <p>여유곰과 진행해줘 부장님이 이 화면을 돌아다녀요. 잡아서 던지고, 톡 눌러보세요.</p>
+  <ol><li>아이폰: 사파리 아래 <b>공유 버튼 → 홈 화면에 추가</b></li><li>안드로이드 크롬: <b>⋮ → 홈 화면에 추가</b></li></ol>
+  <p style="font-size:13px;margin-top:8px;opacity:.75">홈 화면 아이콘으로 열면 앱처럼 전체 화면으로 떠요. 아이폰은 이 화면 안에서만 움직여요.</p>
+  <button id="go">시작하기</button>
+</div></div>
+<script>/* ===== 도트 스프라이트 (24x24) — 안드로이드 앱의 Sprite 코드를 그대로 옮김 ===== */
+function makePx(g){return (x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h)}}
+const LEGS={stand:[[6,0,3,3],[12,0,3,3]],walkA:[[5,0,3,3],[13,0,3,3]],walkB:[[7,0,3,3],[11,0,3,2]],runA:[[5,0,3,2],[13,0,3,3]],tuck:[[6,0,3,2],[12,0,3,2]],dangle:[[7,0,3,3],[11,0,3,3]],sit:[[5,0,4,2],[12,0,4,2]],kick:[[6,0,3,3],[13,-1,3,2]]};
+const SHOES={stand:[[5,3,4,1],[12,3,4,1]],walkA:[[4,3,4,1],[13,3,4,1]],walkB:[[7,3,4,1],[11,2,4,1]],runA:[[3,1,3,1],[13,3,4,1]],tuck:[[5,2,4,1],[12,2,4,1]],dangle:[[7,3,3,1],[11,3,3,1]],sit:[[3,0,2,2],[16,0,2,2]],kick:[[5,3,4,1],[16,-2,2,3]]};
+const SPARK='#ffe45e',TEAR='#5bc0ff',TONGUE='#ff7a9a',M_IN='#6b2230',BLUSH='#f29a9a',EYE='#1c1b24';
+
+function propAnchor(aR,by,bear){
+  if(bear)return{up:[17,by-5],out:[20,by+1],wave:[19,by-4],hip:[17,by+3],hold:[14,by+2],paw:[15,by-3]}[aR]||[17,by+5];
+  return{up:[16,by-5],out:[20,by+1],wave:[18,by-4],hip:[16,by+3],hold:[13,by+2]}[aR]||[16,by+5];
+}
+function drawProp(px,p,by,bear){
+  const pr=p.prop;if(!pr)return;const [ax,ay]=propAnchor(p.aR,by,bear);const dark='#22222c',white='#ffffff';
+  switch(pr){
+    case'phone':px(ax,ay-2,2,3,dark);px(ax,ay-2,2,2,'#6fd3ff');break;
+    case'coffee':px(ax-1,ay-2,3,3,white);px(ax-1,ay-2,3,1,'#6b3e1e');px(ax+2,ay-1,1,1,white);break;
+    case'book':px(ax-3,ay-2,5,4,'#3b6fd8');px(ax-2,ay-1,3,2,white);break;
+    case'mic':px(ax,ay-3,2,2,'#666677');px(ax,ay-1,1,2,dark);break;
+    case'drumstick':px(ax-1,ay-2,3,2,'#c8782e');px(ax+1,ay,1,1,'#a8581e');px(ax+2,ay+1,1,1,white);break;
+    case'icecream':px(ax,ay-3,2,2,'#ffb6c8');px(ax,ay-1,2,1,'#d9a24a');break;
+    case'balloon':px(ax,ay-6,1,6,'#dddddd');px(ax-1,ay-9,3,3,'#ff4f7a');px(ax-1,ay-9,1,1,'#ffc0d0');break;
+    case'camera':px(ax-2,ay-2,4,3,'#333344');px(ax-1,ay-1,2,1,'#6fd3ff');px(ax+1,ay-3,1,1,'#333344');break;
+    case'flower':px(ax,ay-1,1,3,'#3a9a4a');px(ax-1,ay-3,3,2,'#ff6f96');px(ax,ay-3,1,1,SPARK);break;
+    case'heart':{const h='#ff4f7a';px(ax-2,ay-4,1,1,h);px(ax,ay-4,1,1,h);px(ax-2,ay-3,3,1,h);px(ax-1,ay-2,1,1,h);break}
+    case'dumbbell':px(0,by-6,22,1,'#777788');px(bear?-1:0,by-8,2,4,'#333344');px(20,by-8,2,4,'#333344');break;
+    case'dumbbellDown':px(1,by+5,20,1,'#777788');px(0,by+3,2,4,'#333344');px(19,by+3,2,4,'#333344');break;
+    case'guitar':px(9,by+2,6,4,'#b5651d');px(10,by+1,4,1,'#b5651d');px(11,by+3,2,2,'#3a2410');px(15,by+2,5,1,'#5a3a1e');px(20,by+1,1,2,'#3a2410');break;
+    case'laptop':px(4,19,12,1,'#bfbfc8');px(5,15,10,4,'#3a3a46');px(6,16,8,2,'#6fd3ff');break;
+    case'honey':px(ax-2,ay-2,4,3,'#d9a24a');px(ax-2,ay-3,4,1,'#f5c518');px(ax-1,ay-1,2,1,'#fff1b0');px(ax+1,ay+1,1,1,'#f5c518');break;
+    case'salmon':px(ax-3,ay-1,6,2,'#f08a6a');px(ax+3,ay-2,1,4,'#e07050');px(ax-3,ay-1,1,1,dark);px(ax-1,ay,3,1,'#ffc0a8');break;
+    case'berry':px(ax-1,ay-2,2,2,'#d93a4e');px(ax,ay-3,1,1,'#3a9a4a');px(ax-1,ay-2,1,1,'#ff8a9a');break;
+    case'snowball':px(ax-1,ay-2,3,3,'#f4f8ff');px(ax+1,ay,1,1,'#cfe0f5');break;
+    case'lunchbox':px(ax-3,ay-1,6,3,'#e8312a');px(ax-3,ay-1,6,1,'#ffb0a0');break;
+    case'cupramen':px(ax-1,ay-3,3,3,white);px(ax-1,ay-2,3,1,'#e8312a');px(ax-1,ay-3,3,1,'#f5c518');break;
+    case'pillow':px(10,18,8,3,white);px(11,19,6,1,'#dde6f5');break;
+  }
+}
+
+/* ---------- 진행해줘 부장님 ---------- */
+const PC={hair:'#1a1a20',hairHi:'#3a3a46',skin:'#f1c6a0',skinSh:'#d49c78',lid:'#5a3a30',mouth:'#9a5040',shirt:'#f0a38a',shirtSh:'#d4826b',shirtHi:'#fbc3ae',pants:'#2b3d6b',shoe:'#f4f4f4',pen:'#3b6fd8',penTip:'#e8e8e8',penCap:'#22222c',
+ feather:'#f7ecd6',featherSh:'#e0cba6',featherHi:'#fffaf0',comb:'#e8312a',beak:'#f5c518',beakSh:'#d99a0b',foot:'#f2b705',claw:'#6b4a2b',chLid:'#b08a6a',box:'#d93a2e',boxIn:'#fff6ee',fried:'#a8581e',fried2:'#d88a34'};
+function drawPink(g,p,form,now){
+  const px=makePx(g);g.save();g.translate(2,0);const by=p.by,ch=form==='chicken';
+  // legs
+  const pc=ch?PC.foot:PC.pants,sc=ch?PC.foot:PC.shoe;
+  (LEGS[p.legs]||LEGS.stand).forEach(r=>px(r[0]+(ch?1:0),p.ly+r[1],ch?1:r[2],r[3],pc));
+  (SHOES[p.legs]||SHOES.stand).forEach(r=>{px(r[0],p.ly+r[1],r[2],r[3],sc);if(ch)px(r[0]+r[2]-1,p.ly+r[1]+r[3]-1,1,1,PC.claw)});
+  if(ch&&p.legs!=='sit'){px(5,p.ly,11,1,PC.feather);px(6,p.ly+1,9,1,PC.featherSh)}
+  if(ch){px(1,by+1,4,4,PC.feather);px(0,by-1,2,3,PC.featherHi);px(2,by,2,2,PC.featherHi);px(1,by+4,3,1,PC.featherSh)}
+  px(5,by,11,6,PC.shirt);px(5,by+5,11,1,PC.shirtSh);px(8,by,5,1,PC.shirtSh);
+  for(let r=1;r<5;r++){px(r%2?7:6,by+r,1,1,PC.shirtHi);px(10,by+r,1,1,r%2?PC.shirtHi:PC.shirtSh);px(r%2?13:14,by+r,1,1,PC.shirtHi)}
+  const hand=ch?PC.featherHi:PC.skin;
+  for(const side of[-1,1]){const t=side<0?p.aL:p.aR;const R=(x,y,w,h,c)=>side<0?px(x,y,w,h,c):px(21-x-w,y,w,h,c);
+    if(t==='down'){R(3,by+1,2,4,PC.shirt);R(3,by+5,2,1,hand)}else if(t==='up'){R(3,by-4,2,5,PC.shirt);R(3,by-5,2,1,hand)}
+    else if(t==='out'){R(1,by+1,3,2,PC.shirt);R(0,by+1,1,2,hand)}else if(t==='wave'){R(2,by-3,2,4,PC.shirt);R(1,by-4,2,1,hand)}
+    else if(t==='hip'){R(3,by+1,2,2,PC.shirt);R(4,by+3,1,1,hand)}else if(t==='hold'){R(3,by+1,2,2,PC.shirt);R(4,by+3,3,1,PC.shirt);R(7,by+2,1,1,hand)}}
+  const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);const l=p.look<0?0:1;
+  if(ch){
+    h(8,0,2,1,PC.comb);h(11,0,2,1,PC.comb);h(7,1,8,1,PC.comb);h(14,0,1,1,PC.comb);
+    h(4,2,13,3,PC.hair);h(8,2,4,1,PC.hairHi);h(3,3,1,2,PC.hair);h(17,3,1,2,PC.hair);
+    h(4,5,13,6,PC.feather);h(5,11,11,1,PC.feather);h(3,7,1,3,PC.featherHi);h(17,7,1,3,PC.featherHi);h(4,10,1,1,PC.featherSh);h(16,10,1,1,PC.featherSh);
+    h(4,5,2,1,PC.hair);h(15,5,2,1,PC.hair);h(7,6,2,1,PC.hair);h(12,6,3,1,PC.hair);
+    if(p.eyes==='closed'){h(7,7,2,1,PC.lid);h(12,7,2,1,PC.lid)}
+    else{const e=p.eyes==='sparkle'?SPARK:EYE;h(7,7,2,1,PC.chLid);h(12,7,2,1,PC.chLid);h(7+l,8,1,1,e);if(p.eyes==='wink')h(12,8,2,1,PC.lid);else h(12+l,8,1,1,e);
+      if(p.eyes==='wide'){h(7+l,7,1,1,EYE);h(12+l,7,1,1,EYE)}if(p.eyes==='tear'){h(7+l,9,1,2,TEAR);h(12+l,9,1,2,TEAR)}}
+    h(9,8,4,1,PC.beak);h(13,8,1,1,PC.beakSh);const op=['open','o','grin','tongue'].includes(p.mouth);
+    if(op){h(10,9,3,1,M_IN);h(10,10,3,1,PC.beakSh)}else h(10,9,3,1,PC.beakSh);
+    h(10,op?11:10,2,2,PC.comb);h(12,10,1,1,PC.comb);h(6,9,2,1,BLUSH);h(14,9,2,1,BLUSH);
+  }else{
+    const pw=form==='power',hr=pw?(Math.floor(now/90)%2?'#ff3d75':'#ff6f96'):PC.hair,hh=pw?'#ffe0ea':PC.hairHi;
+    h(6,1,9,1,hr);h(4,2,13,3,hr);h(9,2,5,1,hh);h(7,2,1,2,hh);
+    if(pw){[5,8,11,14].forEach(sx=>h(sx,0,1,1,hr));h(3,2,1,2,hr);h(17,2,1,2,hr);h(2,1,1,1,hr);h(18,1,1,1,hr)}
+    h(5,5,11,6,PC.skin);h(6,11,9,1,PC.skin);h(5,10,1,1,PC.skinSh);h(15,10,1,1,PC.skinSh);
+    h(4,5,1,2,hr);h(16,5,1,1,hr);h(8,5,6,1,hr);h(14,5,1,1,hh);
+    h(4,7,1,2,PC.skin);h(16,7,1,2,PC.skin);h(4,8,1,1,PC.skinSh);h(16,8,1,1,PC.skinSh);
+    h(7,6,2,1,PC.hair);h(12,6,2,1,PC.hair);if(pw){h(9,7,1,1,PC.hair);h(11,7,1,1,PC.hair)}
+    if(p.eyes==='closed'){h(7,7,2,1,PC.lid);h(12,7,2,1,PC.lid)}
+    else if(p.eyes==='wink'){h(7+l,7,1,1,EYE);h(12,7,2,1,PC.lid)}
+    else if(p.eyes==='sparkle'){h(7+l,7,1,1,SPARK);h(12+l,7,1,1,SPARK);h(7+l,8,1,1,EYE);h(12+l,8,1,1,EYE)}
+    else{h(7+l,7,1,1,EYE);h(12+l,7,1,1,EYE);if(p.eyes==='wide'){h(7+l,8,1,1,EYE);h(12+l,8,1,1,EYE);h(7,5,2,1,PC.hair);h(12,5,2,1,PC.hair)}
+      if(p.eyes==='angry'){h(9,7,1,1,PC.hair);h(11,7,1,1,PC.hair)}}
+    if(p.eyes==='tear'){h(7+l,8,1,2,TEAR);h(12+l,8,1,2,TEAR)}
+    h(10,8,1,2,PC.skinSh);
+    switch(p.mouth){case'grin':h(8,9,5,2,M_IN);h(9,9,3,1,'#fff');break;case'tongue':h(9,9,3,1,M_IN);h(10,10,1,1,TONGUE);break;
+      case'smile':h(9,10,3,1,PC.mouth);h(8,9,1,1,PC.mouth);h(12,9,1,1,PC.mouth);break;case'open':h(9,9,3,2,M_IN);break;case'o':h(10,9,1,2,M_IN);break;default:h(9,10,3,1,PC.mouth)}
+    if(p.blush){h(6,9,1,1,BLUSH);h(14,9,1,1,BLUSH)}
+    if(p.prop==='headphones'){h(5,1,11,1,'#333344');h(3,6,2,3,'#ff4f7a');h(16,6,2,3,'#ff4f7a')}
+  }
+  if(ch&&p.box){px(10,by+1,9,5,PC.box);px(13,by,3,1,PC.box);px(14,by,1,1,PC.boxIn);px(11,by+2,7,3,PC.boxIn);
+    px(12,by+3,2,1,PC.fried);px(14,by+3,1,1,PC.fried2);px(15,by+3,2,1,PC.fried);px(13,by+4,3,1,PC.fried2);px(11,by+2,1,1,PC.box);px(9,by+3,2,2,PC.featherHi);px(18,by+3,1,2,PC.featherHi)}
+  if(p.pen==='up'){px(16,by-9,1,4,PC.pen);px(16,by-10,1,1,PC.penTip);px(16,by-6,1,1,PC.penCap)}
+  else if(p.pen==='out'){px(20,by-3,1,4,PC.pen);px(20,by-4,1,1,PC.penTip)}
+  else if(p.pen==='down'){px(20,by+3,1,1,PC.pen);px(21,by+4,1,1,PC.pen);px(21,by+5,1,1,PC.penTip)}
+  else if(p.pen==='stab'){px(20,by+1,1,1,PC.penTip);px(19,by+1,1,1,PC.pen)}
+  if(p.prop!=='headphones')drawProp(px,p,by,false);
+  if(p.pot){px(5,16,11,1,'#f6d978');px(6,16,9,1,'#d8642c');px(7,16,1,1,'#fbe9a0');px(10,16,2,1,'#fbe9a0');px(13,16,1,1,'#fbe9a0');
+    px(5,17,11,4,'#e0b54a');px(5,20,11,1,'#b88a2a');px(7,18,1,1,'#f6d978');px(11,19,1,1,'#f6d978');px(3,17,2,1,'#b88a2a');px(16,17,2,1,'#b88a2a')}
+  if(p.eat){px(10,by-1,1,3,'#fbe9a0');px(16,by+1,2,2,PC.shirt);px(14,by-1,2,2,PC.shirt);px(12,by-2,2,1,hand);px(11,by-1,1,3,'#7a4a24')}
+  g.restore();
+}
+
+/* ---------- 여유곰 ---------- */
+const BC={fur:'#b9783f',furSh:'#9a5f2e',earIn:'#e3b07a',muz:'#f1ddb8',nose:'#3a2420',mouth:'#7a4a3a',hair:'#1a1a20',hairHi:'#3a3a46',glass:'#2a2a30',lens:'#e3f0fb',lid:'#6a4020',
+ jacket:'#2c2c34',jLn:'#33333c',jHi:'#3e3e4a',zip:'#5c5c6a',pants:'#3a3f58',shoe:'#4a3426',pad:'#f2a0a8'};
+function drawBear(g,p){
+  const px=makePx(g);g.save();g.translate(2,0);const by=p.by;
+  if(p.prop==='bike'){const f='#3b6fd8',d='#22222c';for(const cx of[3,16]){px(cx-2,17,5,1,d);px(cx-2,21,5,1,d);px(cx-3,18,1,3,d);px(cx+2,18,1,3,d);px(cx,19,1,1,'#999')}
+    px(3,19,13,1,f);px(9,16,1,3,f);px(15,14,1,5,f);px(14,13,3,1,d);px(7,16,4,1,d)}
+  (LEGS[p.legs]||LEGS.stand).forEach(r=>px(r[0],p.ly+r[1],r[2],r[3],BC.pants));
+  (SHOES[p.legs]||SHOES.stand).forEach(r=>px(r[0],p.ly+r[1],r[2],r[3],BC.shoe));
+  px(4,by,13,6,BC.jacket);px(4,by+2,13,1,BC.jLn);px(4,by+4,13,1,BC.jLn);px(6,by,9,1,BC.jHi);px(8,by,5,1,BC.fur);px(10,by,1,6,BC.zip);px(6,by+2,1,2,BC.zip);px(14,by+2,1,2,BC.zip);
+  for(const side of[-1,1]){const t=side<0?p.aL:p.aR;const R=(x,y,w,h,c)=>side<0?px(x,y,w,h,c):px(21-x-w,y,w,h,c);
+    switch(t){case'down':R(2,by+1,2,4,BC.jacket);R(2,by+2,1,2,BC.jLn);break;case'paws':R(2,by+1,2,4,BC.jacket);R(2,by+5,2,1,BC.fur);break;
+      case'up':R(2,by-4,2,5,BC.jacket);R(2,by-5,2,1,BC.fur);break;case'out':R(0,by+1,3,2,BC.jacket);R(-1,by+1,1,2,BC.fur);break;
+      case'wave':R(1,by-3,2,4,BC.jacket);R(0,by-4,2,1,BC.fur);R(0,by-4,1,1,BC.pad);break;case'hip':R(2,by+1,2,2,BC.jacket);R(3,by+3,1,1,BC.fur);break;
+      case'hold':R(2,by+1,2,2,BC.jacket);R(3,by+3,3,1,BC.jacket);R(6,by+2,1,1,BC.fur);break;case'paw':R(2,by-1,2,2,BC.jacket);R(3,by-2,1,1,BC.jacket);break}}
+  const h=(x,y,w,hh,c)=>px(x+p.hx,y+p.hy,w,hh,c);const l=p.look<0?0:1;
+  h(3,1,4,3,BC.fur);h(4,0,2,1,BC.fur);h(4,1,2,2,BC.earIn);h(14,1,4,3,BC.fur);h(15,0,2,1,BC.fur);h(15,1,2,2,BC.earIn);
+  h(5,3,11,1,BC.fur);h(4,4,13,7,BC.fur);h(5,11,11,1,BC.fur);h(3,5,1,5,BC.fur);h(17,5,1,5,BC.fur);
+  h(3,9,1,1,BC.furSh);h(17,9,1,1,BC.furSh);h(4,10,1,1,BC.furSh);h(16,10,1,1,BC.furSh);
+  h(7,0,1,1,BC.hair);h(10,0,1,1,BC.hair);h(13,0,1,1,BC.hair);h(6,1,9,2,BC.hair);h(6,3,2,1,BC.hair);h(9,3,3,1,BC.hair);h(13,3,2,1,BC.hair);h(8,1,3,1,BC.hairHi);h(10,4,1,1,BC.hair);
+  h(8,8,5,1,BC.muz);h(7,9,7,2,BC.muz);h(8,11,5,1,BC.muz);h(9,8,3,1,BC.nose);h(10,9,1,1,BC.nose);
+  for(const gx of[6,11]){h(gx+1,5,2,1,BC.glass);h(gx+1,7,2,1,BC.glass);h(gx,6,1,1,BC.glass);h(gx+3,6,1,1,BC.glass);h(gx+1,6,2,1,BC.lens)}h(10,6,1,1,BC.glass);
+  switch(p.eyes){case'closed':h(7,6,2,1,BC.lid);h(12,6,2,1,BC.lid);break;case'wink':h(7+l,6,1,1,EYE);h(12,6,2,1,BC.lid);break;
+    case'sparkle':h(7+l,6,1,1,SPARK);h(12+l,6,1,1,SPARK);break;case'angry':h(7+l,6,1,1,EYE);h(12+l,6,1,1,EYE);h(8,4,2,1,BC.hair);h(11,4,2,1,BC.hair);break;
+    case'wide':h(7,6,2,1,EYE);h(12,6,2,1,EYE);break;default:h(7+l,6,1,1,EYE);h(12+l,6,1,1,EYE)}
+  if(p.eyes==='tear'){h(7+l,8,1,2,TEAR);h(13,8,1,2,TEAR)}
+  switch(p.mouth){case'smile':h(8,9,1,1,BC.mouth);h(12,9,1,1,BC.mouth);h(9,10,3,1,BC.mouth);break;case'open':h(9,10,3,2,M_IN);break;case'o':h(10,10,1,2,M_IN);break;
+    case'grin':h(8,10,5,2,M_IN);h(9,10,3,1,'#fff');break;case'tongue':h(9,10,3,1,M_IN);h(10,11,1,1,TONGUE);break;default:h(9,10,1,1,BC.mouth);h(11,10,1,1,BC.mouth)}
+  if(p.blush){h(5,9,2,1,BLUSH);h(14,9,2,1,BLUSH)}
+  if(p.prop==='santa'){h(5,0,11,2,'#e8312a');h(4,2,13,1,'#fff');h(15,-1,2,2,'#fff')}
+  if(p.prop==='headphones'){h(5,0,11,1,'#333344');h(3,5,2,3,'#ffb000');h(16,5,2,3,'#ffb000')}
+  if(p.aR==='paw'){px(15,by-3,2,2,BC.fur);px(16,by-3,1,1,BC.pad)}
+  if(!['santa','headphones','bike'].includes(p.prop))drawProp(px,p,by,true);
+  g.restore();
+}
+</script>
+<script>/* ===== 펫 엔진 — 안드로이드 앱 Engine.kt 를 웹으로 옮김 ===== */
+const G=2600, rnd=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.floor(Math.random()*a.length)], fl=Math.floor;
+const Pz=o=>Object.assign({hx:0,hy:0,by:12,ly:18,legs:'stand',aL:'down',aR:'down',eyes:'open',look:1,mouth:'flat',blush:false,lying:false,pot:false,eat:false,pen:null,box:false,prop:null,lift:0,pivot:0,sx:1,sy:1,rot:0},o);
+let SC=2, W=innerWidth, H=innerHeight, plats=[], floorP=null, minX=24, maxX=300;
+let actx=null, soundOn=true;
+
+/* ---- 효과음 (파일 없이 합성) ---- */
+function tone(type,f0,f1,f2,dur,vol,vib){if(!soundOn||!actx)return;const t=actx.currentTime,o=actx.createOscillator(),gn=actx.createGain();
+ o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur*.25);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+ if(vib){const l=actx.createOscillator(),lg=actx.createGain();l.frequency.value=vib;lg.gain.value=f1*.12;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur)}
+ gn.gain.setValueAtTime(.0001,t);gn.gain.exponentialRampToValueAtTime(vol,t+.02);gn.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(gn);gn.connect(actx.destination);o.start(t);o.stop(t+dur+.05)}
+const sfx={boing:s=>tone('square',170,560,240,.6,.07*s,16),jump:()=>tone('square',300,700,900,.18,.05),grab:()=>tone('square',600,900,500,.12,.04),pop:()=>tone('triangle',500,800,1000,.15,.06),
+ swish:()=>tone('sawtooth',900,380,160,.16,.035),stab:()=>tone('square',220,140,80,.12,.1),slurp:()=>tone('sine',260,620,380,.16,.03),
+ crash:()=>{if(!soundOn||!actx)return;const t=actx.currentTime,len=Math.floor(actx.sampleRate*.7),b=actx.createBuffer(1,len,actx.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);const s=actx.createBufferSource();s.buffer=b;const f=actx.createBiquadFilter();f.type='highpass';f.frequency.value=2200;
+  const gn=actx.createGain();gn.gain.value=.28;s.connect(f);f.connect(gn);gn.connect(actx.destination);s.start(t);[2400,3300,4100,2900,3700].forEach((fr,i)=>setTimeout(()=>tone('triangle',fr,fr*1.02,fr*.97,.3,.035),50+i*80))}};
+const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+
+/* ---- 화면 효과 ---- */
+function floatText(txt,x,y,cls=''){const e=document.createElement('div');e.className='fl '+cls;e.textContent=txt;e.style.left=x+'px';e.style.top=y+'px';document.body.appendChild(e);setTimeout(()=>e.remove(),1900)}
+function flash(o){const f=document.createElement('div');f.className='flash';document.body.appendChild(f);f.animate([{opacity:o},{opacity:0}],{duration:420}).onfinish=()=>f.remove()}
+function shake(a){document.getElementById('screen').animate([{transform:'translate(0,0)'},{transform:`translate(${-a}px,${a/2}px)`},{transform:`translate(${a}px,${-a/2}px)`},{transform:`translate(${-a/2}px,${a/3}px)`},{transform:'translate(0,0)'}],{duration:260})}
+function shatter(wx,y,big){const R=big?Math.min(300,W*.6):Math.min(170,W*.42);
+ let d='';const NC=big?16:12;for(let i=0;i<NC;i++){const a=i/NC*Math.PI*2+Math.random()*.4;let p='M0 0';for(let j=1;j<=4;j++){const L=R*j/4*(.65+Math.random()*.5),aa=a+(Math.random()-.5)*.35;p+=` L${(Math.cos(aa)*L).toFixed(1)} ${(Math.sin(aa)*L).toFixed(1)}`}d+=`<path d="${p}"/>`}
+ for(const rr of(big?[22,55,100,160,230]:[18,42,78,120])){let p='';for(let i=0;i<=12;i++){const a=i/12*Math.PI*2,q=rr*(.8+Math.random()*.4);p+=(i?' L':'M')+(Math.cos(a)*q).toFixed(1)+' '+(Math.sin(a)*q).toFixed(1)}d+=`<path d="${p}" stroke-dasharray="${rr/2} ${rr/3}"/>`}
+ const el=document.createElement('div');el.className='crack';el.style.left=(wx-R)+'px';el.style.top=(y-R)+'px';
+ el.innerHTML=`<svg width="${2*R}" height="${2*R}" viewBox="${-R} ${-R} ${2*R} ${2*R}"><g stroke="rgba(30,20,60,.55)" stroke-width="3.2" fill="none">${d}</g><g stroke="#fff" stroke-width="1.3" fill="none">${d}</g><circle r="9" fill="rgba(255,255,255,.9)"/></svg>`;
+ document.body.appendChild(el);setTimeout(()=>el.style.opacity=0,3200);setTimeout(()=>el.remove(),4300);
+ for(let i=0;i<(big?26:16);i++){const s=document.createElement('div'),w=rnd(6,16);s.className='shard';s.style.width=s.style.height=w+'px';s.style.left=(wx-w/2)+'px';s.style.top=(y-w/2)+'px';
+  s.style.clipPath=`polygon(${rnd(0,40)}% 0,100% ${rnd(10,60)}%,${rnd(20,80)}% 100%,0 ${rnd(30,90)}%)`;document.body.appendChild(s);
+  const dx=big?rnd(-220,220):(wx>0?-1:1)*rnd(20,200),up=-rnd(20,140),fall=floorP.y-y+rnd(-10,0),r1=rnd(-200,200);
+  s.animate([{transform:'translate(0,0) rotate(0)'},{transform:`translate(${dx*.5}px,${up}px) rotate(${r1/2}deg)`,offset:.3},{transform:`translate(${dx}px,${fall}px) rotate(${r1}deg)`,opacity:1,offset:.8},{transform:`translate(${dx*1.05}px,${fall}px) rotate(${r1}deg)`,opacity:0}],{duration:rnd(1100,1600),easing:'ease-in'}).onfinish=()=>s.remove()}
+ flash(.55);shake(6);sfx.crash();vib([40,30,90])}
+
+/* ---- 공 ---- */
+const ball={el:null,state:'none',x:0,y:0,gy:0,vx:0,vy:0,rot:0,crashed:false,t:0,owner:null,
+ init(){this.el=document.getElementById('ball');const g=this.el.getContext('2d');
+  ['..XXXX..','.XWWWWX.','XWWBBWWX','XWBBBBWX','XWWBBWWX','XBWWWWBX','.XBWWBX.','..XXXX..'].forEach((r,y)=>[...r].forEach((c,x)=>{if(c!=='.'){g.fillStyle={X:'#2a1f3d',W:'#fff',B:'#3a3a48'}[c];g.fillRect(x,y,1,1)}}))},
+ update(dt){if(this.state==='none'){this.el.style.display='none';return}const r=4*SC;this.el.style.display='block';
+  if(this.state==='rest'){if(!this.owner||this.owner.act!=='kick'||this.owner.state!=='act'){this.t+=dt;if(this.t>3)this.state='none'}}
+  else{this.vy+=G*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;this.rot+=this.vx*dt*1.6;
+   if(this.y>=this.gy){this.y=this.gy;this.vy=-this.vy*.45;this.vx*=.85;if(Math.abs(this.vy)<70)this.vy=0}
+   if(!this.crashed&&(this.x>=W-r||this.x<=r)){const right=this.x>=W-r;this.x=right?W-r:r;this.crashed=true;shatter(right?W:0,this.y-r,false);this.vx=-this.vx*.22;this.vy=-180;this.owner&&this.owner.onCrash&&this.owner.onCrash(this.x)}
+   if(this.crashed){this.x=Math.max(r,Math.min(W-r,this.x));this.t+=dt;if(this.t>2.8)this.state='none'}}
+  const s=8*SC;this.el.style.width=this.el.style.height=s+'px';this.el.style.opacity=this.crashed&&this.t>2.2?Math.max(0,1-(this.t-2.2)/.6):1;
+  this.el.style.transform=`translate(${this.x-s/2}px,${this.y-s}px) rotate(${this.rot}deg)`}};
+
+/* ---- 기본 모션 정의 ---- */
+const BASE={idle:[2,4,3],walk:[2.5,5,3,70],run:[1.5,3,1.2,180],jump:[.3,.3,1.6],sit:[3,6,1],sleep:[6,9,.9],wave:[1.8,2.6,1],dance:[3,5,1],look:[2.5,4,1.4],stretch:[2.2,2.8,1],
+ pen:[99,99,.9],power:[99,99,.6],chicken:[99,99,.6],ramen:[8,8,.8],cfly:[8,12,2.5],kick:[99,99,1]};
+const BASEFX={run:['💦',.6],sleep:['z',.8,'z'],dance:['♪',.5]};
+const BASESAY={wave:['안녕! 👋','반가워!','하이~'],look:['?','뭐지?','음…'],stretch:['하암~']};
+const BUSY=['pen','kick','power','chicken','cfly','ramen'];
+
+class Pet{
+ constructor(def){this.def=def;this.allowed=new Set(def.specials.map(s=>s[0]));
+  this.el=document.createElement('div');this.el.className='pet';this.cv=document.createElement('canvas');this.cv.width=this.cv.height=24;this.el.appendChild(this.cv);this.g=this.cv.getContext('2d');
+  this.tmp=document.createElement('canvas');this.tmp.width=this.tmp.height=24;this.tg=this.tmp.getContext('2d');
+  this.bub=document.createElement('div');this.bub.className='bubble';this.aura=document.createElement('div');this.aura.className='aura';this.shadow=document.createElement('div');this.shadow.className='shadow';
+  document.body.append(this.shadow,this.aura,this.el,this.bub);
+  Object.assign(this,{x:W/2,y:-40,vx:0,vy:0,dir:1,state:'air',airKind:'fall',act:'idle',t:0,dur:3,plat:null,pose:Pz({}),rot:0,landT:0,landA:0,impact:0,rebound:false,squash:0,last:'',
+   fxFrame:-1,launched:false,jvx:0,jvy:0,edge:null,fxT:0,form:'normal',formT:0,charge:0,awayT:0,ph:0,kt:0,sw:-1,ki:0,ks:0,ks2:0,flip:-1,kf:-1,kct:-1,
+   tx:0,ty:0,fvx:0,fvy:0,loopT:0,sayT:0,evIdx:0,bubT:0,onCrash:null,clock:0});
+  this.bindTouch()}
+ get drawY(){return this.y-(this.pose.lift||0)*SC}
+ headX(){return this.x} headY(){return this.drawY-21*SC}
+ say(t,s){this.bub.textContent=t;this.bub.style.display='block';this.bubT=s}
+ floater(t,cls='',dx=0){floatText(t,this.x+dx,this.headY()-20,cls)}
+ has(n){return(BASE[n]&&this.allowed.has(n))||!!this.def.moves[n]}
+ spawn(frac){this.x=Math.max(minX,Math.min(maxX,W*frac));this.y=-40;this.goAir(0,0,'fall')}
+ goAir(vx,vy,k){this.state='air';this.vx=vx;this.vy=vy;this.plat=null;this.airKind=k}
+ force(n){if(!this.has(n))return;if(this.state==='act'||this.state==='land'){if(!this.plat)this.plat=floorP;this.startAct(n)}}
+ get canInteract(){const mv=this.def.moves[this.act];return(this.state==='act'&&!BUSY.includes(this.act)&&(!mv||!mv.events||!mv.events.length))||this.state==='land'}
+ interact(n,fx,text){if(!this.has(n)||(this.state!=='act'&&this.state!=='land'))return;if(!this.plat)this.plat=floorP;this.y=this.plat.y;this.startAct(n);this.dir=fx>=this.x?1:-1;if(text)this.say(text,1.8)}
+ bump(fx){if(this.state==='drag'||this.state==='away')return;const d=this.x>=fx?1:-1;this.dir=-d;this.goAir(d*320,-560,'fall');this.floater('띠용!','boing');sfx.boing(.8);vib(20)}
+ startAct(n){Object.assign(this,{state:'act',act:n,t:0,fxFrame:-1,launched:false,edge:null,last:n,evIdx:0,fxT:0,ph:0,kt:0,kct:-1,sw:-1,ki:0,ks:0,ks2:0,flip:-1,kf:-1});
+  const mv=this.def.moves[n];
+  if((n==='cfly'||(mv&&mv.chicken))&&this.form!=='chicken'){this.form='chicken';this.formT=40;flash(.5);for(let i=0;i<4;i++)this.floater('💨','',rnd(-24,24));this.floater('펑!','boing');tone('square',300,150,600,.35,.07)}
+  if(mv){this.dur=mv.dur;if(mv.says)this.say(pick(mv.says),1.6);return}
+  const b=BASE[n];this.dur=n==='sleep'?rnd(this.def.sleepMin,this.def.sleepMax):rnd(b[0],b[1]);
+  if(n==='walk'||n==='run')this.dir=Math.random()<.5?-1:1;
+  if(BASESAY[n])this.say(pick(BASESAY[n]),1.6);
+  if(n==='jump'){const tx=Math.max(minX,Math.min(maxX,this.x+this.dir*rnd(40,110))),cand=plats.filter(p=>p!==this.plat&&!p.floor&&this.y-p.y<300&&this.y-p.y>-500&&Math.abs((p.x1+p.x2)/2-this.x)<340);
+   let gx=tx,gy=this.y;if(cand.length&&Math.random()<.7){const p=pick(cand);gx=rnd(p.x1+10,p.x2-10);gy=p.y}
+   const h=this.y-gy,HH=Math.max(h,0)+55,vy=-Math.sqrt(2*G*HH),T=Math.sqrt(2*HH/G)+Math.sqrt(2*(HH-h)/G);this.jvx=(gx-this.x)/T;this.jvy=vy;if(Math.abs(this.jvx)>5)this.dir=Math.sign(this.jvx)}
+  if(n==='cfly'){this.plat=null;this.fvx=0;this.fvy=-260;this.say('날아오른다아~!!',1.4);this.floater('💨');sfx.jump()}}
+ weight(k){const ch=this.form==='chicken',mv=this.def.moves[k];if(mv)return mv.chicken?(ch?(mv.w??.45):0):(ch?(mv.w??.45)*.4:(mv.w??.45));
+  if(k==='cfly')return ch?2.5:0;if(k==='kick'&&(!this.plat||!this.plat.floor||ball.state!=='none'))return 0;return BASE[k][2]}
+ nextAct(){const keys=[...this.allowed,...Object.keys(this.def.moves)].filter(k=>k!==this.last);let tot=0;const w=keys.map(k=>{const v=this.weight(k);tot+=v;return v});
+  let r=Math.random()*tot;for(let i=0;i<keys.length;i++){r-=w[i];if(r<=0)return this.startAct(keys[i])}this.startAct('idle')}
+ land(p){const imp=this.vy;this.y=p.y;if(p.el){p.el.classList.remove('hit');void p.el.offsetWidth;p.el.classList.add('hit')}
+  if(imp>1150&&!this.rebound){this.rebound=true;this.vy=-imp*.33;this.vx*=.5;this.squash=.14;sfx.boing(1);this.floater('띠용!','boing');vib(25);return}
+  this.state='land';this.plat=p;this.vx=0;this.vy=0;this.landT=0;this.impact=this.rebound?Math.max(imp,1200):imp;this.landA=Math.min(.45,Math.max(.14,imp/2000));
+  if(imp>420||this.rebound){this.floater(this.rebound?'띠요옹~':'띠용~','boing');sfx.boing(Math.min(1,imp/1200+.3));vib(18)}this.rebound=false}
+ bindTouch(){let d=null;const el=this.el;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();ensureAudio();el.setPointerCapture(e.pointerId);
+   d={id:e.pointerId,ox:this.x-e.clientX,oy:this.y-e.clientY,tx:this.x,ty:this.y,sx:e.clientX,sy:e.clientY,t0:performance.now(),moved:0,hist:[],prev:this.plat,said:false,long:false};
+   this.state='drag';this.plat=null;this.rot=0;this.charge=0;this.drag=d;sfx.grab()});
+  el.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id||d.long)return;d.tx=e.clientX+d.ox;d.ty=e.clientY+d.oy;d.moved=Math.max(d.moved,Math.hypot(e.clientX-d.sx,e.clientY-d.sy));
+   d.hist.push({t:performance.now(),x:d.tx,y:d.ty});if(d.hist.length>12)d.hist.shift();if(d.moved>14&&!d.said){d.said=true;this.say(pick(['으앗!','어디 가?','놔줘~','높다아']),1.2)}});
+  const end=e=>{if(!d||e.pointerId!==d.id)return;const dd=d;d=null;this.drag=null;if(dd.long)return;
+   if(dd.moved<10&&performance.now()-dd.t0<350&&dd.prev){this.plat=dd.prev;this.y=dd.prev.y;this.startAct('wave');this.say(this.def.tapSay,1.3);this.floater('❤');sfx.pop();return}
+   const now=performance.now(),h=dd.hist.filter(p=>now-p.t<110);let vx=0,vy=0;if(h.length>1){const a=h[0],b=h[h.length-1],dt=Math.max(.016,(b.t-a.t)/1000);vx=(b.x-a.x)/dt;vy=(b.y-a.y)/dt}
+   vx=Math.max(-1500,Math.min(1500,vx));vy=Math.max(-2000,Math.min(1500,vy));if(vy<-900)this.say('으아아~',1.2);if(Math.abs(vx)>30)this.dir=Math.sign(vx);this.goAir(vx,vy,'fall')};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end)}
+
+ update(dt,now){this.clock+=dt;let p=null;
+  if(this.state==='act'){this.t+=dt;const mv=this.def.moves[this.act];
+   if(mv){this.moveUpdate(mv,dt);if(this.state==='act'){p=this.movePose(mv,this.t);if(this.t>=this.dur)this.nextAct()}}
+   else{const b=BASE[this.act];if(b[3])this.groundMove(b[3],dt);this.actUpdate(dt);
+    if(this.state==='act'){p=this.actPose(this.t);const f=BASEFX[this.act];if(f){this.fxT+=dt;if(this.fxT>f[1]){this.fxT=0;this.floater(f[0],f[2]||'',rnd(-10,14))}}if(this.state==='act'&&this.t>=this.dur)this.nextAct()}}}
+  if(this.state==='drag'){const d=this.drag;if(d){d.dt=(d.dt||0)+dt;
+    if(!d.long&&d.moved<10&&d.dt>.6){d.long=true;const pr=d.prev||floorP;this.plat=pr;this.y=pr.y;this.startAct('idle');this.say('메뉴 열게요!',1);openMenu(this.def.id)}
+    else{const k=Math.min(1,dt*22),ox=this.x;this.x+=(d.tx-this.x)*k;this.y+=(d.ty-this.y)*k;this.x=Math.max(minX,Math.min(maxX,this.x));
+     const v=(this.x-ox)/Math.max(dt,.001);this.rot+=(Math.max(-30,Math.min(30,-v*.04))*this.dir-this.rot)*Math.min(1,dt*10);
+     const f=fl(now/260)%2;p=Pz({legs:f?'dangle':'tuck',aL:'up',aR:'up',mouth:'o',eyes:'wide',sy:1.06,sx:.96,rot:this.rot})}}else p=this.pose}
+  if(this.state==='air'){const py=this.y;this.vy+=G*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;
+   if(this.x<minX){this.x=minX;this.vx=-this.vx*.5;this.dir=1}if(this.x>maxX){this.x=maxX;this.vx=-this.vx*.5;this.dir=-1}
+   if(this.vy>0){let hit=null;for(const q of plats){if(py<=q.y+1&&this.y>=q.y&&this.x>=q.x1&&this.x<=q.x2&&(!hit||q.y<hit.y))hit=q}if(!hit&&this.y>=floorP.y)hit=floorP;if(hit)this.land(hit)}
+   if(this.state==='air'){const f=fl(now/90)%2;
+    p=this.airKind==='jump'&&this.vy<0?Pz({aL:'up',aR:'up',legs:'tuck',mouth:'smile',sy:1.08,sx:.94}):Pz({aL:f?'up':'out',aR:f?'out':'up',legs:f?'tuck':'dangle',mouth:'open',eyes:'wide',rot:Math.max(-15,Math.min(15,this.vx*.012))*this.dir});
+    if(this.squash>0){this.squash-=dt;p.sy=.7;p.sx=1.3}}}
+  if(this.state==='land'){this.landT+=dt;const t=this.landT,e=Math.exp(-5.5*t),sy=1-this.landA*e*Math.cos(21*t),sx=1+(1-sy)*.8;
+   p=t<.2?Pz({legs:'walkA',aL:'out',aR:'out',eyes:'closed',sy,sx}):Pz({mouth:'smile',blush:true,sy,sx});
+   if(t>.95){if(this.impact>1500){this.startAct('look');this.floater('💫');this.say('어지러워…',1.4)}else this.nextAct()}}
+  if(this.state==='away'){this.awayT-=dt;p=this.pose;if(this.awayT<=0){this.x=rnd(minX,maxX);this.y=-40;this.goAir(0,0,'fall');this.say('…휴',1)}}
+  if(this.form!=='normal'&&this.state!=='drag'&&!(this.state==='act'&&this.act==='cfly')){this.formT-=dt;if(this.formT<=0){this.form='normal';for(let i=0;i<3;i++)this.floater('💨','',rnd(-20,20));this.say('원래대로…',1.2)}}
+  p=p||this.pose;if(this.form==='chicken'&&this.state==='act'&&['idle','look','sit','chicken'].includes(this.act))p.box=true;this.pose=p;
+  if(this.bubT>0){this.bubT-=dt;if(this.bubT<=0||this.state==='away')this.bub.style.display='none'}}
+ groundMove(sp,dt){const nx=this.x+this.dir*sp*dt;if(nx<minX||nx>maxX){this.dir*=-1;return}const p=this.plat;
+  if(p&&!p.floor&&(nx<p.x1||nx>p.x2)){if(this.edge===null)this.edge=Math.random()<.5;if(this.edge){this.dir*=-1;this.edge=null;return}this.x=nx;this.say('어어?!',1);this.goAir(this.dir*sp*.7,-80,'fall');return}this.x=nx}
+
+ moveUpdate(mv,dt){if(mv.move){const sd=mv.back?-this.dir:this.dir,nx=this.x+sd*mv.move*dt;if(nx<minX||nx>maxX)this.dir*=-1;else{
+   const p=this.plat;if(p&&!p.floor&&(nx<p.x1||nx>p.x2)){this.x=nx;this.goAir(sd*mv.move*.7,-80,'fall');return}this.x=nx}}
+  const ev=mv.events||[];while(this.evIdx<ev.length&&this.t>=ev[this.evIdx][0]){const c=ev[this.evIdx][1];this.evIdx++;
+   if(c.startsWith('say:'))this.say(c.slice(4),1.4);else if(c.startsWith('boing:')){this.floater(c.slice(6),'boing');sfx.boing(.6)}else if(c.startsWith('fl:'))this.floater(c.slice(3),'',rnd(-10,10));
+   else if(c==='shake'){shake(5);vib(30)}else if(c==='flash')flash(.5);else if(c==='pop')sfx.pop()}
+  if(mv.fx){this.fxT+=dt;if(this.fxT>mv.fxEvery){this.fxT=0;this.floater(mv.fx,mv.fxKind||'',rnd(-12,14))}}}
+ movePose(mv,t){const list=t>=(mv.switchAt??99)&&mv.frames2?mv.frames2:mv.frames;const p=Pz(Object.assign({},list[fl(t*mv.fps)%list.length]));
+  p.hx|=0;p.hy|=0;p.by|=0;p.ly|=0;
+  if(mv.spin)p.sx*=Math.cos(t*mv.spin);if(mv.roll){p.rot=t*mv.roll;p.pivot=11}if(mv.jitter)p.hx=fl(Math.random()*3)-1;
+  if(mv.hop)p.lift=Math.abs(Math.sin(t*mv.hopRate*Math.PI))*mv.hop;if(mv.float)p.lift=mv.float*(.5-.5*Math.cos(Math.min(t,2)*Math.PI/2))+Math.sin(t*2)*1.2;return p}
+
+ actUpdate(dt){const t=this.t;
+  switch(this.act){
+  case'jump':if(t>.18&&!this.launched){this.launched=true;sfx.jump();this.goAir(this.jvx,this.jvy,'jump')}break;
+  case'pen':this.kt+=dt;switch(this.ph){
+    case 0:if(this.kt>.7){this.ph=1;this.kt=0;this.say('얍! 얍!',1.2)}break;
+    case 1:{const s=fl(this.kt/.22);if(s!==this.sw){this.sw=s;sfx.swish();if(s%2===0)this.floater('슉!','',this.dir*14)}if(this.kt>2){this.ph=2;this.kt=0;this.say('필살… 찌르기!',1.1)}break}
+    case 2:if(this.kt>.7){this.ph=3;this.kt=0;sfx.stab();shatter(this.x+this.dir*9*SC,this.y-11*SC,true);this.onCrash&&this.onCrash(this.x)}break;
+    case 3:if(this.kt>.7){this.ph=4;this.kt=0;this.say('어… 어떡해!!',1.4)}break;
+    case 4:this.panic(dt,1.6,['내가 안 그랬어!','도망쳐~!']);break;
+    default:this.flee(dt)}break;
+  case'kick':this.kt+=dt;switch(this.ph){
+    case 0:if(this.kt>.35&&ball.state==='none'){Object.assign(ball,{state:'rest',x:this.x+this.dir*10*SC,y:(this.plat||floorP).y,gy:(this.plat||floorP).y,vx:0,vy:0,crashed:false,t:0,owner:this})}if(this.kt>.75){this.ph=1;this.kt=0}break;
+    case 1:{const nx=this.x-this.dir*60*dt;if(nx>minX&&nx<maxX)this.x=nx;if(this.kt>.9){this.ph=2;this.kt=0;this.say('간다~!',1)}break}
+    case 2:this.x+=this.dir*230*dt;if(Math.abs(ball.x-this.x)<=8*SC||this.kt>2){this.ph=3;this.kt=0;ball.state='fly';ball.vx=this.dir*1150;ball.vy=-420;sfx.stab()}break;
+    case 3:if(this.kt>.3){this.ph=4;this.kt=0;this.kct=-1}break;
+    case 4:if(ball.crashed&&this.kct<0){this.kct=0;this.say('헉!!',1.2)}if(this.kct>=0)this.kct+=dt;
+      if(this.kct>1.2){this.ph=5;this.kt=0;this.say(pick(['어떡해!! 유리가…','내가 안 그랬어…!']),1.4)}else if(this.kt>4)this.nextAct();break;
+    case 5:this.panic(dt,1.4,['도망쳐~!! 🐻💨']);break;
+    default:this.flee(dt)}break;
+  case'power':this.kt+=dt;if(this.ph===0){this.charge=Math.min(1,this.kt/1.8);this.ks+=dt;
+    if(this.ks>.22){this.ks=0;shake(3);tone('sawtooth',70+this.kt*60,90+this.kt*80,60+this.kt*60,.22,.05);if(this.kt>.6)this.floater('⚡','',rnd(-20,20))}
+    if(this.ki===0){this.ki=1;this.say('흐으읍…',1)}if(this.kt>1&&this.ki===1){this.ki=2;this.say('하아아아아!!',1)}
+    if(this.kt>1.8){this.ph=1;this.kt=0;this.charge=0;this.form='power';this.formT=30;flash(.8);shake(9);tone('square',200,900,1200,.5,.08);vib(120);this.say('파워업 완료!',1.4);this.floater('💥')}}
+    else if(this.kt>1.6)this.nextAct();break;
+  case'chicken':this.kt+=dt;if(this.ph===0){this.ks+=dt;if(this.ks>.15){this.ks=0;this.floater('✨','',rnd(-22,22));tone('triangle',600+this.kt*600,900+this.kt*600,700+this.kt*600,.12,.03)}
+    if(this.kt>1.1){this.ph=1;this.kt=0;this.form='chicken';this.formT=40;flash(.6);for(let i=0;i<4;i++)this.floater('💨','',rnd(-24,24));this.floater('펑!','boing');tone('square',300,150,600,.35,.07);this.say('치킨 타임~ 🍗',1.6)}}
+    else if(this.kt>2.4)this.nextAct();break;
+  case'ramen':{const ev=[[.05,'쉿… 아무도 없지?'],[2.1,'후루룩'],[4.6,'…!'],[5.5,'후루룩 쩝쩝'],[7.1,'꺼억~ 😋']];
+    while(this.ki<ev.length&&t>=ev[this.ki][0]){this.say(ev[this.ki][1],this.ki?1:1.6);this.ki++}
+    if(t>1.8&&t<7.1&&!(t>4.6&&t<5.4)){this.ks+=dt;if(this.ks>.55){this.ks=0;this.floater('~','z',rnd(-12,12))}const f=fl(t*3)%3;if(f!==this.kf){this.kf=f;if(f===0)sfx.slurp()}}break}
+  case'cfly':{this.ks+=dt;this.ks2+=dt;this.sayT+=dt;
+    if(this.ki===0||Math.hypot(this.tx-this.x,this.ty-this.y)<30||this.ks>2.6){this.ki=1;this.ks=0;this.tx=rnd(minX,maxX);this.ty=rnd(H*.12,floorP.y-90)}
+    const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.max(1,Math.hypot(dx,dy)),sp=250,k=Math.min(1,dt*2.5);
+    this.fvx+=(dx/d*sp-this.fvx)*k;this.fvy+=(dy/d*sp-this.fvy)*k;this.x+=this.fvx*dt;this.y+=this.fvy*dt+Math.sin(this.clock*9)*30*dt;
+    this.x=Math.max(minX,Math.min(maxX,this.x));this.y=Math.max(H*.08,Math.min(floorP.y,this.y));if(Math.abs(this.fvx)>25)this.dir=Math.sign(this.fvx);
+    if(this.ks2>.38){this.ks2=0;this.floater(pick(['💕','✨','♪','💖','🌟','🪶']),'',rnd(-16,16))}
+    if(this.sayT>2.6){this.sayT=0;this.say(pick(['날 수 있다아~!!','꼬끼오~! 🐔','행복해~','하늘 최고!','위이잉~','치킨 아니고 비행기다!']),1.6)}
+    if(this.loopT>0)this.loopT-=dt;else if(Math.random()<dt*.18){this.loopT=.9;this.floater('빙그르르~','boing')}
+    if(t>=this.dur){this.loopT=0;this.goAir(this.fvx*.5,-150,'fall');this.say('착지할게~!',1.1)}break}
+  }}
+ panic(dt,len,lines){this.ks2+=dt;if(this.ks2>.45){this.ks2=0;this.floater('💦','',rnd(-12,12))}const s=fl(this.kt/.18);if(s!==this.flip){this.flip=s;this.dir=-this.dir}
+  if(this.kt>len){this.ph++;this.kt=0;this.dir=this.x>W/2?1:-1;this.say(pick(lines),1.4)}}
+ flee(dt){this.x+=this.dir*340*dt;if(this.x<-40||this.x>W+40){this.state='away';this.awayT=1.5;this.bubT=0;this.bub.style.display='none'}}
+
+ actPose(t){const kt=this.kt,ph=this.ph;
+  switch(this.act){
+  case'idle':{const b=fl(t*1.6)%2;return Pz({by:12+b,hy:b,eyes:t%2.7<.13?'closed':'open',look:t>this.dur*.6?-1:1})}
+  case'walk':{const f=fl(t*8)%4;return Pz({legs:['walkA','stand','walkB','stand'][f],hy:f%2,by:12+f%2,aL:f===0?'hip':'down',aR:f===2?'hip':'down'})}
+  case'run':{const f=fl(t*12)%2;return Pz({legs:f?'runA':'walkB',hy:f,by:12+f,aL:f?'out':'hip',aR:f?'hip':'out',mouth:'open',hx:1})}
+  case'jump':return Pz({by:13,hy:2,legs:'tuck',aL:'out',aR:'out',sy:.85,sx:1.1});
+  case'sit':return Pz({by:14,hy:2,ly:20,legs:'sit',eyes:t%3<.13?'closed':'open',mouth:t>1.5?'smile':'flat',blush:t>1.5});
+  case'sleep':return Pz({lying:true,eyes:'closed',mouth:fl(t*1.2)%2?'o':'flat'});
+  case'wave':{const f=fl(t*5)%2;return Pz({aR:f?'wave':'up',mouth:'smile',blush:true})}
+  case'dance':{const f=fl(t*4)%4;if(f!==this.fxFrame){this.fxFrame=f;if(f%2===0)this.dir*=-1}const o=f%2;
+    return Pz({aL:o?'up':'out',aR:o?'out':'up',legs:o?'walkB':'walkA',by:12+o,hy:o,mouth:'smile',eyes:f===3?'closed':'open',sy:o?.94:1.04})}
+  case'look':{const s=fl(t/.7)%2;return Pz({look:s?-1:1,hx:s?-1:1,eyes:'wide',mouth:'o'})}
+  case'stretch':if(t<1.5){const q=Math.sin(Math.min(t/1.5,1)*Math.PI);return Pz({aL:'up',aR:'up',eyes:'closed',mouth:'open',sy:1+.1*q,sx:1-.05*q,legs:'dangle'})}return Pz({mouth:'smile',blush:true});
+  case'pen':{const f=fl(kt*9)%4;
+    if(ph===0)return Pz({aR:'out',pen:'out',mouth:'smile'});
+    if(ph===1){const s=((this.sw%3)+3)%3;return Pz(s===0?{aR:'up',pen:'up',mouth:'open',legs:'walkA',hx:1}:s===1?{aR:'out',pen:'out'}:{aR:'out',pen:'down',mouth:'open',legs:'walkA',by:13,hy:1,hx:1})}
+    if(ph===2)return Pz({aR:'hip',aL:'out',by:13,hy:1,sx:.9,sy:1.05,eyes:'wide',hx:-1});
+    if(ph===3)return Pz({aR:'out',pen:'stab',legs:'walkA',mouth:'open',eyes:'wide',sx:1.3,sy:1.3,hx:1});
+    if(ph===4)return this.panicPose(kt);return this.runPose(f)}
+  case'kick':{const f=fl(kt*10)%4;
+    if(ph===0)return Pz({by:13,hy:2,aR:'out'});if(ph===1)return Pz({legs:['walkB','stand','walkA','stand'][f],mouth:'smile'});
+    if(ph===2)return Pz({legs:f%2?'runA':'walkB',hy:f%2,by:12+f%2,aL:f%2?'out':'hip',aR:f%2?'hip':'out',mouth:'open',hx:1});
+    if(ph===3)return Pz({legs:'kick',aL:'out',aR:'up',mouth:'open',hx:1,sx:1.06});
+    if(ph===4)return this.kct<0?Pz({eyes:'wide',mouth:'o'}):Pz({eyes:'wide',mouth:'open',aL:'up',aR:'up',sy:1.06,sx:.95,hx:fl(kt*14)%2});
+    if(ph===5)return this.panicPose(kt);return this.runPose(f)}
+  case'power':if(this.ph===0){const j=fl(t*20)%2;return Pz({by:13,hy:1,aL:'hip',aR:'hip',eyes:'closed',mouth:'open',hx:j?1:-1,sx:1+.05*j})}return Pz({aL:'out',aR:'out',mouth:'smile',legs:'walkA',sy:1.06});
+  case'chicken':if(this.ph===0)return Pz({sx:Math.cos(t*22)*(1-t*.3),aL:'up',aR:'up',eyes:'closed',mouth:'open'});return Pz({box:true,mouth:'smile',hy:fl(t*3)%2});
+  case'cfly':{const f=fl(this.clock*10)%2;let r=Math.max(-15,Math.min(15,this.fvx*.03))*this.dir;if(this.loopT>0)r+=(1-this.loopT/.9)*360;
+    return Pz({aL:f?'up':'out',aR:f?'out':'up',legs:'tuck',eyes:fl(this.clock*.7)%3===2?'sparkle':'closed',mouth:f?'open':'smile',blush:true,rot:r,pivot:11})}
+  case'ramen':{const S={by:14,hy:2,ly:20,legs:'sit',pot:true};
+    if(t<1.8){const s=fl(t/.35)%2;return Pz({look:s?-1:1,hx:s?-1:1,eyes:'wide',by:13,hy:1})}
+    if(t>4.6&&t<5.4)return Pz({...S,look:fl(t/.2)%2?-1:1,eyes:'wide',mouth:'o'});if(t>=7.1)return Pz({...S,eyes:'closed',mouth:'smile',blush:true});
+    const f=fl(t*3)%3;return f===0?Pz({...S,eat:true,aR:'none',mouth:'open',eyes:'closed'}):Pz({...S,hy:f===1?2:3,blush:true})}
+  }return Pz({})}
+ panicPose(kt){const j=fl(kt*14)%2;return Pz({aL:j?'up':'out',aR:j?'out':'up',eyes:'wide',mouth:'open',hx:j?1:-1,legs:j?'walkA':'walkB',by:12+j,hy:j})}
+ runPose(f){return Pz({legs:f%2?'runA':'walkB',hy:f%2,by:12+f%2,aL:'up',aR:'up',mouth:'open',eyes:'wide',hx:1})}
+
+ render(now){const p=this.pose,g=this.g;
+  if(p.lying){this.tg.clearRect(0,0,24,24);this.def.draw(this.tg,p,this.form,now);g.clearRect(0,0,24,24);g.save();g.translate(24,2);g.rotate(Math.PI/2);g.drawImage(this.tmp,0,0);g.restore()}
+  else{g.clearRect(0,0,24,24);this.def.draw(g,p,this.form,now)}
+  const s=24*SC;this.el.style.width=this.el.style.height=s+'px';this.el.style.display=this.state==='away'?'none':'block';
+  this.el.style.transform=`translate(${this.x-s/2}px,${this.drawY-22*SC}px)`;
+  this.cv.style.transformOrigin=`50% ${((22-(p.pivot||0))/24*100).toFixed(1)}%`;
+  this.cv.style.transform=`scale(${this.dir*p.sx},${p.sy}) rotate(${p.rot}deg)`;
+  // 그림자
+  let gy=this.y;if(this.state!=='act'&&this.state!=='land'){let best=null;for(const q of plats){if(q.y>=this.y-2&&this.x>=q.x1&&this.x<=q.x2&&(!best||q.y<best.y))best=q}gy=best?best.y:floorP.y}
+  const dist=Math.max(0,gy-this.drawY),w=Math.max(16,(p.lying?17:12)*SC-dist*.08);
+  this.shadow.style.display=this.state==='away'?'none':'block';this.shadow.style.width=w+'px';this.shadow.style.opacity=Math.max(.2,1-dist/400);this.shadow.style.transform=`translate(${this.x-w/2}px,${gy-4}px)`;
+  // 오라
+  const ac=this.form==='power'?1:this.charge;if(ac>0&&this.state!=='away'){const aw=26*SC*(.5+ac*.6),ah=32*SC*(.5+ac*.65);this.aura.style.display='block';this.aura.style.width=aw+'px';this.aura.style.height=ah+'px';
+   this.aura.style.opacity=.4+ac*.6;this.aura.style.transform=`translate(${this.x-aw/2}px,${this.drawY-ah+4}px)`}else this.aura.style.display='none';
+  if(this.bubT>0){const b=this.bub,bx=Math.max(4,Math.min(W-b.offsetWidth-4,this.x-b.offsetWidth/2));b.style.transform=`translate(${bx}px,${this.headY()-b.offsetHeight-14}px)`}}
+ remove(){this.el.remove();this.bub.remove();this.aura.remove();this.shadow.remove()}
+}
+</script>
+<script>
+{
+const BEAR_MOVES={"pawlick":{"label":"🐾 곰발바닥 핥기","dur":5.0,"fps":2.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"paw","eyes":"closed","mouth":"tongue","blush":true},{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"paw","eyes":"closed","mouth":"tongue"}],"w":1.0,"says":["할짝할짝… 꿀맛","곰발바닥은 달콤해"],"fx":"💕","fxEvery":0.9},"pawlickStand":{"label":"🐾 서서 발바닥 냠냠","dur":3.5,"fps":3.0,"frames":[{"aR":"paw","eyes":"closed","mouth":"tongue"},{"hy":1.0,"by":13.0,"aR":"paw","eyes":"closed","mouth":"smile"}],"w":0.7,"fx":"♡","fxEvery":0.6},"hibernate":{"label":"겨울잠 (푹 자기)","dur":14.0,"fps":0.6,"frames":[{"eyes":"closed","mouth":"o","lying":true,"prop":"pillow"},{"eyes":"closed","lying":true,"prop":"pillow"}],"w":0.9,"fx":"z","fxEvery":0.7,"fxKind":"z","events":[[0.2,"say:겨울잠 잘 시간…"],[4.0,"say:드르렁~ 쿨…"],[8.0,"say:음냐음냐… 꿀…"],[12.0,"say:드르렁~~"]]},"nap":{"label":"꾸벅 낮잠","dur":6.0,"fps":1.0,"frames":[{"hy":2.0,"by":14,"ly":20,"legs":"sit","eyes":"closed"},{"hy":4.0,"by":14,"ly":20,"legs":"sit","eyes":"closed"}],"w":0.6,"fx":"z","fxEvery":0.8,"fxKind":"z"},"sunbath":{"label":"햇볕 쬐기","dur":6.0,"fps":0.5,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"smile","blush":true,"lying":true}],"fx":"☀","fxEvery":1.0,"says":["아~ 따뜻하다"]},"honey":{"label":"🍯 꿀 먹기","dur":5.0,"fps":2.0,"frames":[{"aR":"hold","mouth":"open","prop":"honey"},{"aR":"hold","eyes":"closed","mouth":"tongue","blush":true,"prop":"honey"}],"w":0.8,"says":["꿀은 못 참지","달달하다~"],"fx":"🍯","fxEvery":1.0},"honeyDip":{"label":"꿀단지에 발 넣기","dur":4.0,"fps":2.0,"frames":[{"aL":"hold","aR":"hip","prop":"honey"},{"aL":"hold","aR":"paw","eyes":"closed","mouth":"tongue"}],"says":["한 번만 찍어 먹자…"]},"salmon":{"label":"🐟 연어 낚기","dur":4.0,"fps":3.0,"frames":[{"aR":"up","eyes":"angry"},{"hy":2.0,"by":13.0,"aR":"out","eyes":"wide","mouth":"o"}],"w":0.8,"switchAt":2.4,"frames2":[{"aR":"up","eyes":"sparkle","mouth":"grin","prop":"salmon"}],"events":[[0.2,"say:연어 어딨지…"],[2.4,"boing:잡았다! 🐟"],[2.4,"pop"]]},"salmonEat":{"label":"연어 냠냠","dur":4.0,"fps":2.5,"frames":[{"aR":"hold","mouth":"open","prop":"salmon"},{"aR":"hold","eyes":"closed","blush":true,"prop":"salmon"}],"fx":"🐟","fxEvery":1.0},"berry":{"label":"산딸기 따기","dur":4.0,"fps":2.0,"frames":[{"aR":"up","look":-1.0},{"aR":"hold","mouth":"smile","prop":"berry"}],"says":["산딸기 발견!"],"fx":"🍓","fxEvery":0.9},"backscratch":{"label":"등 긁기","dur":4.0,"fps":4.0,"frames":[{"aL":"up","eyes":"closed","mouth":"smile","rot":-6.0},{"aL":"up","eyes":"closed","mouth":"o","rot":6.0}],"w":0.7,"says":["아 거기 거기… 시원하다~"]},"roar":{"label":"어흥!","dur":2.5,"fps":1.0,"frames":[{"aL":"up","aR":"up","eyes":"angry","mouth":"open","sy":1.1}],"jitter":true,"events":[[0.2,"boing:어흥~!!"],[0.2,"shake"]]},"standTall":{"label":"두 발로 우뚝","dur":3.5,"fps":0.8,"frames":[{"aL":"paws","aR":"paws","sy":1.1},{"aL":"paws","aR":"paws","look":-1.0,"sy":1.1}],"says":["킁… 뭐가 있나?"]},"bellydrum":{"label":"배 두드리기","dur":3.5,"fps":6.0,"frames":[{"aL":"hold","aR":"hip","eyes":"closed","mouth":"grin"},{"aL":"hip","aR":"hold","mouth":"smile"}],"fx":"둥","fxEvery":0.3,"says":["배부르다~ 둥둥"]},"sniff":{"label":"킁킁 냄새","dur":3.5,"fps":2.0,"frames":[{"hx":1.0,"mouth":"o"},{"hx":-1.0,"look":-1.0,"mouth":"o"}],"fx":"킁","fxEvery":0.5,"says":["어디서 치킨 냄새가…"]},"dig":{"label":"땅 파기","dur":4.0,"fps":6.0,"frames":[{"hy":2.0,"by":13.0,"aL":"paws","aR":"out","sy":0.92},{"hy":2.0,"by":13.0,"aL":"out","aR":"paws","sy":0.92}],"fx":"·","fxEvery":0.2,"says":["뭔가 묻혀 있다!"]},"climb":{"label":"나무 타기","dur":4.0,"fps":4.0,"frames":[{"legs":"tuck","aL":"up","aR":"paws"},{"legs":"dangle","aL":"paws","aR":"up"}],"float":10.0,"says":["영차영차"]},"pawPrint":{"label":"🐾 발도장 쾅쾅","dur":3.5,"fps":3.0,"frames":[{"legs":"kick","mouth":"smile"},{"mouth":"grin","sy":0.94}],"hop":3.0,"hopRate":1.5,"fx":"🐾","fxEvery":0.35},"pawWave":{"label":"🐾 곰발 흔들기","dur":3.0,"fps":4.0,"frames":[{"aR":"wave","mouth":"smile","blush":true},{"aR":"up","mouth":"smile","blush":true}],"says":["곰발바닥 보여줄게~"]},"hug":{"label":"꼬옥 포옹","dur":3.5,"fps":1.2,"frames":[{"aL":"out","aR":"out","mouth":"smile"},{"aL":"hold","aR":"hold","eyes":"closed","mouth":"smile","blush":true}],"fx":"💕","fxEvery":0.4,"says":["곰 포옹~ 꼬옥"]},"bootyshake":{"label":"엉덩이 씰룩","dur":3.0,"fps":6.0,"frames":[{"aL":"hip","aR":"hip","mouth":"grin","rot":-8.0},{"aL":"hip","aR":"hip","mouth":"grin","rot":8.0}],"says":["씰룩씰룩~"]},"bees":{"label":"벌 떼 도망","dur":3.5,"fps":10.0,"frames":[{"legs":"runA","aL":"up","aR":"up","eyes":"wide","mouth":"open"},{"legs":"walkB","aL":"up","aR":"up","eyes":"wide","mouth":"open"}],"move":220.0,"fx":"🐝","fxEvery":0.25,"says":["으악 벌이다!! 꿀 안 훔쳤어!!"]},"snowball":{"label":"❄ 눈싸움","dur":4.0,"fps":2.0,"frames":[{"aR":"up","mouth":"grin","prop":"snowball"},{"aR":"out","mouth":"open"}],"fx":"❄","fxEvery":0.5,"says":["받아라~ 눈뭉치!"]},"snowangel":{"label":"❄ 눈천사","dur":5.0,"fps":2.0,"frames":[{"aL":"up","aR":"up","mouth":"smile","lying":true},{"aL":"out","aR":"out","mouth":"smile","lying":true}],"fx":"❄","fxEvery":0.5,"says":["눈밭 최고~"]},"snowman":{"label":"⛄ 눈사람 만들기","dur":5.0,"fps":2.0,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aL":"out","aR":"hold","prop":"snowball"},{"hy":2,"by":14,"ly":20,"legs":"sit","aL":"hold","aR":"out","mouth":"smile"}],"events":[[3.5,"boing:⛄ 완성!"]]},"notCold":{"label":"하나도 안 추움","dur":4.0,"fps":1.0,"frames":[{"aL":"hip","aR":"hip","eyes":"closed","mouth":"smile"}],"fx":"❄","fxEvery":0.35,"says":["이 정도는 따뜻하지~","곰은 추위 안 타요"]},"iceSlide":{"label":"얼음 미끄럼","dur":2.5,"fps":1.0,"frames":[{"legs":"walkA","aL":"out","aR":"out","mouth":"grin","rot":6.0}],"move":260.0,"fx":"✨","fxEvery":0.2,"says":["슈우웅~"]},"snowShake":{"label":"부르르 눈 털기","dur":2.5,"fps":1.0,"frames":[{"eyes":"closed","mouth":"grin"}],"jitter":true,"fx":"❄","fxEvery":0.15,"events":[[0.1,"say:부르르르~"]]},"icecream":{"label":"겨울 아이스크림","dur":4.0,"fps":2.0,"frames":[{"aR":"hold","mouth":"tongue","prop":"icecream"},{"aR":"hold","eyes":"closed","mouth":"smile","blush":true,"prop":"icecream"}],"says":["겨울엔 아이스크림이지"]},"santa":{"label":"🎅 산타곰","dur":4.0,"fps":2.0,"frames":[{"aR":"wave","mouth":"grin","prop":"santa"},{"aR":"up","mouth":"smile","prop":"santa"}],"says":["메리 크리스마스~!"],"fx":"🎁","fxEvery":0.8},"chill":{"label":"주머니에 손 여유","dur":5.0,"fps":0.5,"frames":[{"mouth":"smile"},{"eyes":"closed","mouth":"smile"}],"w":0.8,"says":["여유롭다~","서두를 거 없지"]},"stroll":{"label":"느긋한 산책","dur":6.0,"fps":3.0,"frames":[{"legs":"walkA","mouth":"smile"},{},{"legs":"walkB","mouth":"smile"},{}],"move":35.0,"w":0.8,"fx":"♪","fxEvery":1.0},"spaceout":{"label":"멍때리기","dur":5.0,"fps":0.3,"frames":[{"look":-1.0,"mouth":"o"},{"mouth":"o"}],"fx":"…","fxEvery":1.4},"sky":{"label":"하늘 구경","dur":4.0,"fps":0.5,"frames":[{"hy":-1.0,"eyes":"sparkle","mouth":"smile"}],"fx":"☁","fxEvery":1.0,"says":["하늘 예쁘다~"]},"hum":{"label":"콧노래","dur":4.0,"fps":2.0,"frames":[{"eyes":"closed","mouth":"smile","rot":-3.0},{"eyes":"closed","mouth":"o","rot":3.0}],"fx":"♪","fxEvery":0.45},"shrug":{"label":"어깨 으쓱","dur":2.5,"fps":2.0,"frames":[{"aL":"out","aR":"out","mouth":"smile","sy":1.04},{"mouth":"smile"}],"says":["뭐 어때~","될 대로 되겠지"]},"thumbsup":{"label":"엄지척","dur":2.5,"fps":1.0,"frames":[{"aR":"up","eyes":"wink","mouth":"grin"}],"says":["👍 최고!"]},"coffee":{"label":"아아 한잔","dur":5.0,"fps":1.2,"frames":[{"aR":"hold","prop":"coffee"},{"hy":-1.0,"aR":"hold","eyes":"closed","mouth":"o","prop":"coffee"}],"fx":"~","fxEvery":0.7,"fxKind":"z","says":["아아는 사계절 내내"]},"phone":{"label":"폰 보기","dur":5.0,"fps":1.5,"frames":[{"hy":1.0,"aR":"hold","look":-1.0,"prop":"phone"},{"hy":1.0,"aR":"hold","eyes":"closed","mouth":"grin","prop":"phone"}],"fx":"ㅋ","fxEvery":0.8},"lunch":{"label":"도시락","dur":5.0,"fps":2.0,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","mouth":"open","prop":"lunchbox"},{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"closed","blush":true,"prop":"lunchbox"}],"says":["점심시간이 제일 좋아"]},"cupramen":{"label":"컵라면 야식","dur":5.0,"fps":2.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","mouth":"open","prop":"cupramen"},{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"hold","eyes":"closed","prop":"cupramen"}],"fx":"~","fxEvery":0.6,"fxKind":"z","says":["후루룩~ 야식은 못 참지"]},"chickenEat":{"label":"치킨 먹방","dur":5.0,"fps":2.5,"frames":[{"aR":"hold","mouth":"open","prop":"drumstick"},{"aR":"hold","eyes":"closed","blush":true,"prop":"drumstick"}],"fx":"🍗","fxEvery":0.9,"says":["치킨은 진리…"]},"firewall":{"label":"방화벽 정책 조회","dur":6.0,"fps":4.0,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","prop":"laptop"},{"hy":2,"by":14,"ly":20,"legs":"sit","look":-1.0,"prop":"laptop"}],"fx":"타닥","fxEvery":0.5,"says":["정책 조회 중…","이 포트 누가 열었어…"]},"study":{"label":"자격증 공부","dur":6.0,"fps":0.5,"frames":[{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"hold","prop":"book"},{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"hold","look":-1.0,"prop":"book"}],"says":["보안기사 합격하자!","외울 게 너무 많아…"],"fx":"✏","fxEvery":1.2},"bike":{"label":"🚲 자전거 타기","dur":5.0,"fps":6.0,"frames":[{"hy":-2.0,"by":10.0,"ly":15.0,"legs":"walkA","aL":"out","aR":"out","mouth":"grin","prop":"bike"},{"hy":-2.0,"by":10.0,"ly":15.0,"legs":"walkB","aL":"out","aR":"out","mouth":"smile","prop":"bike"}],"move":160.0,"w":0.6,"says":["장거리 라이딩 간다~"],"fx":"💨","fxEvery":0.5},"offwork":{"label":"칼퇴근","dur":4.0,"fps":8.0,"frames":[{"legs":"walkA","aR":"wave","mouth":"grin"},{"legs":"walkB","aR":"up","mouth":"grin"}],"move":110.0,"says":["칼퇴!! 내일 봐요 👋"]},"doze":{"label":"업무 중 꾸벅","dur":5.0,"fps":1.2,"frames":[{"hy":2.0,"by":14,"ly":20,"legs":"sit","eyes":"closed"},{"hy":4.0,"by":14,"ly":20,"legs":"sit","eyes":"closed"}],"fx":"z","fxEvery":0.9,"fxKind":"z","switchAt":4.2,"frames2":[{"hy":1.0,"by":14,"ly":20,"legs":"sit","eyes":"wide","mouth":"o"}],"events":[[4.2,"boing:헉! 안 잤어요!"]]},"selfie":{"label":"셀카","dur":3.0,"fps":2.0,"frames":[{"aR":"up","eyes":"wink","mouth":"smile","prop":"phone"},{"aR":"up","mouth":"grin","blush":true,"prop":"phone"}],"events":[[1.2,"flash"],[1.2,"fl:찰칵!"],[2.2,"flash"],[2.2,"fl:찰칵!"]]},"camera":{"label":"사진 찍기","dur":3.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"wink","prop":"camera"}],"events":[[1.3,"flash"],[1.3,"fl:찰칵!"],[2.2,"say:잘 나왔다!"]]},"music":{"label":"음악 감상","dur":5.0,"fps":2.5,"frames":[{"eyes":"closed","mouth":"smile","prop":"headphones"},{"hy":1.0,"by":13.0,"eyes":"closed","mouth":"smile","prop":"headphones"}],"fx":"♪","fxEvery":0.45},"sing":{"label":"노래방","dur":5.0,"fps":3.0,"frames":[{"aL":"out","aR":"hold","mouth":"open","prop":"mic"},{"aL":"up","aR":"hold","eyes":"closed","mouth":"o","prop":"mic"}],"fx":"♪","fxEvery":0.4,"says":["♬ 곰 세 마리가~"]},"guitar":{"label":"기타 연주","dur":5.0,"fps":4.0,"frames":[{"aL":"out","aR":"hold","eyes":"closed","mouth":"smile","prop":"guitar"},{"aL":"out","aR":"hip","eyes":"closed","mouth":"o","prop":"guitar"}],"fx":"♪","fxEvery":0.35},"flower":{"label":"꽃 향기","dur":4.0,"fps":0.8,"frames":[{"aR":"hold","eyes":"closed","mouth":"smile","blush":true,"prop":"flower"}],"fx":"🌸","fxEvery":0.8,"says":["음~ 좋은 향기"]},"balloon":{"label":"풍선 둥실","dur":5.0,"fps":1.0,"frames":[{"aR":"out","mouth":"smile","prop":"balloon"}],"float":8.0,"says":["둥실둥실~"]},"workout":{"label":"아령 운동","dur":4.0,"fps":2.0,"frames":[{"aL":"up","aR":"up","eyes":"angry","mouth":"grin","prop":"dumbbell"},{"hy":1.0,"by":13.0,"aL":"paws","aR":"paws","mouth":"o","prop":"dumbbellDown"}],"fx":"💦","fxEvery":0.8,"says":["곰은 힘이 세지!"]},"squat":{"label":"스쿼트","dur":4.0,"fps":2.0,"frames":[{"aL":"out","aR":"out"},{"hy":3.0,"by":14.0,"ly":19.0,"legs":"tuck","aL":"out","aR":"out","eyes":"angry","mouth":"grin"}],"fx":"💦","fxEvery":1.0},"yoga":{"label":"곰 요가","dur":5.0,"fps":0.6,"frames":[{"legs":"kick","aL":"up","aR":"up","eyes":"closed"},{"legs":"kick","aL":"out","aR":"out","eyes":"closed","rot":4.0}],"says":["나마스떼…"]},"meditate":{"label":"명상(공중부양)","dur":6.0,"fps":0.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aL":"out","aR":"out","eyes":"closed"}],"float":6.0,"fx":"✨","fxEvery":0.7,"says":["옴~ 여유~"]},"kungfu":{"label":"곰발 쿵푸","dur":3.5,"fps":3.0,"frames":[{"legs":"kick","aL":"hip","aR":"out","eyes":"angry","mouth":"open"},{"legs":"walkA","aL":"out","aR":"hip","eyes":"angry"}],"fx":"곰발 펀치!","fxEvery":0.9},"boxing":{"label":"곰 펀치","dur":3.5,"fps":6.0,"frames":[{"hx":1.0,"legs":"walkA","aL":"hold","aR":"out","eyes":"angry"},{"legs":"walkA","aL":"out","aR":"hold","eyes":"angry"}],"fx":"퍽!","fxEvery":0.45},"jumprope":{"label":"줄넘기","dur":4.0,"fps":4.0,"frames":[{"legs":"tuck","aL":"out","aR":"out"},{"aL":"hip","aR":"hip"}],"hop":4.0,"hopRate":2.0,"events":[[0.5,"fl:1"],[1.0,"fl:2"],[1.5,"fl:3"],[2.0,"fl:4"],[2.5,"fl:5"]]},"jumpingjack":{"label":"팔벌려뛰기","dur":4.0,"fps":4.0,"frames":[{"legs":"walkA","aL":"up","aR":"up","mouth":"open"},{}],"hop":3.0,"hopRate":4.0,"fx":"💦","fxEvery":0.9},"laugh":{"label":"껄껄 웃기","dur":3.5,"fps":6.0,"frames":[{"aL":"hip","aR":"hip","eyes":"closed","mouth":"grin"},{"hy":1.0,"by":13.0,"aL":"hip","aR":"hip","eyes":"closed","mouth":"open"}],"fx":"ㅋ","fxEvery":0.3,"says":["껄껄껄!"]},"moved":{"label":"감동 눈물","dur":4.0,"fps":2.0,"frames":[{"aL":"hold","aR":"hold","eyes":"tear","mouth":"smile"}],"fx":"💧","fxEvery":0.6,"says":["흑… 너무 감동이야"]},"pout":{"label":"살짝 삐짐","dur":3.5,"fps":1.0,"frames":[{"hx":-1.0,"aL":"hold","aR":"hold","eyes":"closed","look":-1.0,"mouth":"o","rot":-4.0}],"says":["흥… 삐졌어","…안 삐졌는데?"]},"shy":{"label":"부끄부끄","dur":3.5,"fps":2.0,"frames":[{"hx":-1.0,"aL":"hold","aR":"hold","eyes":"closed","mouth":"smile","blush":true,"rot":-4.0},{"hx":1.0,"aL":"hold","aR":"hold","eyes":"closed","mouth":"smile","blush":true,"rot":4.0}],"says":["아잉…"]},"love":{"label":"하트 뿅뿅","dur":3.5,"fps":1.5,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"smile","blush":true},{"aL":"out","aR":"out","eyes":"wink","mouth":"smile","prop":"heart"}],"fx":"💕","fxEvery":0.35,"says":["사랑해요~"]},"wink":{"label":"윙크","dur":2.5,"fps":1.0,"frames":[{"aR":"wave","eyes":"wink","mouth":"smile","blush":true}],"says":["😉 찡긋"]},"think":{"label":"생각 중","dur":4.0,"fps":0.7,"frames":[{"hy":-1.0,"aR":"hold","look":-1.0},{"aR":"hold","eyes":"closed"}],"fx":"💭","fxEvery":1.2,"says":["흠…"]},"idea":{"label":"번뜩 아이디어","dur":3.0,"fps":0.7,"frames":[{"aR":"hold","look":-1.0},{"aR":"hold","eyes":"closed"}],"switchAt":1.6,"frames2":[{"aR":"up","eyes":"sparkle","mouth":"grin","sy":1.06}],"events":[[1.6,"boing:💡 아하!"],[1.6,"pop"]]},"cheer":{"label":"화이팅","dur":3.5,"fps":4.0,"frames":[{"aL":"up","aR":"out","mouth":"open"},{"aL":"out","aR":"up","mouth":"grin"}],"hop":3.0,"hopRate":2.0,"says":["화이팅!!","오늘도 잘 될 거야!"]},"clap":{"label":"박수","dur":3.0,"fps":6.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed","mouth":"grin"},{"aL":"out","aR":"out","mouth":"grin"}],"fx":"👏","fxEvery":0.35},"bow":{"label":"꾸벅 인사","dur":2.5,"fps":1.2,"frames":[{"mouth":"smile"},{"hy":3.0,"by":13.0,"eyes":"closed","mouth":"smile","sy":0.92}],"says":["안녕하세요~","수고하셨습니다!"]},"sneeze":{"label":"에취","dur":2.6,"fps":2.0,"frames":[{"hy":-1.0,"by":11.0,"eyes":"closed","mouth":"o"},{"hy":-1.0,"by":11.0,"eyes":"closed","mouth":"open"}],"switchAt":1.5,"frames2":[{"hy":2.0,"by":13.0,"aL":"out","aR":"out","eyes":"closed","mouth":"open","sx":1.15,"sy":0.85}],"events":[[0.1,"say:아… 아…"],[1.5,"boing:에취!!"],[1.5,"shake"]]},"hiccup":{"label":"딸꾹질","dur":4.0,"fps":1.0,"frames":[{"eyes":"wide","mouth":"o"}],"hop":4.0,"hopRate":0.9,"events":[[0.5,"fl:딸꾹!"],[1.6,"fl:딸꾹!"],[2.8,"fl:딸꾹!"]]},"yawn":{"label":"하품 쩍","dur":3.0,"fps":1.0,"frames":[{"aR":"paw","eyes":"closed","mouth":"open","sy":1.05}],"says":["하아아암…"]},"spin":{"label":"빙글빙글","dur":3.0,"fps":1.0,"frames":[{"aL":"out","aR":"out","eyes":"closed","mouth":"open"}],"spin":14.0,"events":[[2.9,"fl:💫"]]},"roll":{"label":"데굴데굴","dur":3.0,"fps":1.0,"frames":[{"legs":"tuck","aL":"up","aR":"up","eyes":"closed","mouth":"open"}],"roll":540.0,"move":120.0,"events":[[2.9,"say:어지러…"]]},"moonwalk":{"label":"문워크","dur":4.0,"fps":5.0,"frames":[{"legs":"walkA","aL":"hip","aR":"out","mouth":"smile"},{"legs":"walkB","aL":"hip","aR":"out","mouth":"o"}],"move":70.0,"back":true,"fx":"♪","fxEvery":0.4},"robot":{"label":"로봇 춤","dur":4.0,"fps":3.0,"frames":[{"legs":"walkA","aL":"out"},{"hx":1.0,"legs":"walkB","aR":"out"},{"aL":"up","aR":"up"}],"says":["삐-빅. 곰봇 작동."]},"trip":{"label":"꽈당","dur":3.5,"fps":6.0,"frames":[{"legs":"walkA","mouth":"smile"},{"legs":"walkB"}],"move":90.0,"switchAt":1.0,"frames2":[{"eyes":"wide","mouth":"open","lying":true}],"events":[[1.0,"boing:꽈당!"],[1.0,"shake"],[2.2,"say:괜찮아… 곰은 튼튼해"]]},"sleepwalk":{"label":"몽유병","dur":5.0,"fps":2.0,"frames":[{"legs":"walkA","aL":"out","aR":"out","eyes":"closed","mouth":"o"},{"legs":"walkB","aL":"out","aR":"out","eyes":"closed"}],"move":25.0,"fx":"z","fxEvery":0.8,"fxKind":"z"},"hide":{"label":"숨바꼭질","dur":5.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed"}],"switchAt":3.5,"frames2":[{"aR":"out","eyes":"wide","mouth":"grin"}],"events":[[0.2,"say:하나… 둘… 셋…"],[3.5,"boing:찾았다!"]]},"salute":{"label":"충성","dur":2.5,"fps":1.0,"frames":[{"aR":"wave","eyes":"angry","sy":1.04}],"says":["충성!"]}}
+;
+const PINK_MOVES={"coffee":{"label":"커피 한잔","dur":5.0,"fps":1.2,"frames":[{"aR":"hold","prop":"coffee"},{"hy":-1.0,"aR":"hold","eyes":"closed","mouth":"o","prop":"coffee"}],"says":["커피는 역시 아아…","후~ 살 것 같다"],"fx":"~","fxEvery":0.6,"fxKind":"z"},"phone":{"label":"폰 보기","dur":5.0,"fps":1.5,"frames":[{"hy":1.0,"aR":"hold","look":-1.0,"prop":"phone"},{"hy":1.0,"aR":"hold","eyes":"closed","mouth":"grin","prop":"phone"}],"says":["ㅋㅋㅋㅋ","이거 봐봐"],"fx":"ㅋ","fxEvery":0.7},"selfie":{"label":"셀카","dur":3.0,"fps":2.0,"frames":[{"aR":"up","eyes":"wink","mouth":"smile","prop":"phone"},{"aR":"up","mouth":"grin","blush":true,"prop":"phone"}],"events":[[1.2,"flash"],[1.2,"fl:찰칵!"],[2.2,"flash"],[2.2,"fl:찰칵!"]]},"read":{"label":"독서","dur":6.0,"fps":0.5,"frames":[{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"hold","prop":"book"},{"hy":3.0,"by":14,"ly":20,"legs":"sit","aR":"hold","look":-1.0,"prop":"book"}],"says":["흠… 재밌네"]},"music":{"label":"음악 감상","dur":5.0,"fps":2.5,"frames":[{"eyes":"closed","mouth":"smile","prop":"headphones"},{"hy":1.0,"by":13.0,"eyes":"closed","mouth":"smile","prop":"headphones"}],"fx":"♪","fxEvery":0.45},"sing":{"label":"노래방","dur":5.0,"fps":3.0,"frames":[{"aL":"out","aR":"hold","mouth":"open","prop":"mic"},{"aL":"up","aR":"hold","eyes":"closed","mouth":"o","prop":"mic"}],"says":["♬ 진행해줘~ 진행해줘~","♬ 오늘도 퇴근~"],"fx":"♪","fxEvery":0.4},"guitar":{"label":"기타 연주","dur":5.0,"fps":4.0,"frames":[{"aL":"out","aR":"hold","eyes":"closed","mouth":"smile","prop":"guitar"},{"aL":"out","aR":"hip","eyes":"closed","mouth":"o","prop":"guitar"}],"fx":"♪","fxEvery":0.35,"says":["🎸 둥가둥가"]},"workout":{"label":"아령 운동","dur":4.0,"fps":2.0,"frames":[{"aL":"up","aR":"up","eyes":"angry","mouth":"grin","prop":"dumbbell"},{"hy":1.0,"by":13.0,"mouth":"o","prop":"dumbbellDown"}],"says":["하나! 둘!","근손실은 안돼"],"fx":"💦","fxEvery":0.8},"squat":{"label":"스쿼트","dur":4.0,"fps":2.0,"frames":[{"aL":"out","aR":"out"},{"hy":3.0,"by":14.0,"ly":19.0,"legs":"tuck","aL":"out","aR":"out","eyes":"angry","mouth":"grin"}],"says":["스쿼트 열 개!"],"fx":"💦","fxEvery":1.0},"jumpingjack":{"label":"팔벌려뛰기","dur":4.0,"fps":4.0,"frames":[{"legs":"walkA","aL":"up","aR":"up","mouth":"open"},{}],"hop":3.0,"hopRate":4.0,"fx":"💦","fxEvery":0.9},"yoga":{"label":"요가","dur":5.0,"fps":0.6,"frames":[{"legs":"kick","aL":"up","aR":"up","eyes":"closed"},{"legs":"kick","aL":"out","aR":"out","eyes":"closed","rot":4.0}],"says":["나마스떼…"],"fx":"✨","fxEvery":1.0},"meditate":{"label":"명상(공중부양)","dur":6.0,"fps":0.5,"frames":[{"hy":2,"by":14,"ly":20,"legs":"sit","aR":"out","eyes":"closed","aL":"out"}],"float":6.0,"says":["옴~"],"fx":"✨","fxEvery":0.7},"tiptoe":{"label":"살금살금","dur":4.0,"fps":3.0,"frames":[{"legs":"walkA","aL":"hip","aR":"hip","eyes":"wide","look":-1.0},{"legs":"walkB","aL":"hip","aR":"hip","eyes":"wide"}],"move":28.0,"says":["쉿… 아무도 모르게…"]},"moonwalk":{"label":"문워크","dur":4.0,"fps":5.0,"frames":[{"legs":"walkA","aL":"hip","aR":"out","mouth":"smile"},{"legs":"walkB","aL":"hip","aR":"out","mouth":"o"}],"move":70.0,"back":true,"fx":"♪","fxEvery":0.4,"says":["🕺 우~!"]},"spin":{"label":"빙글빙글","dur":3.0,"fps":1.0,"frames":[{"aL":"out","aR":"out","eyes":"closed","mouth":"open"}],"spin":14.0,"events":[[2.9,"fl:💫"]]},"roll":{"label":"데굴데굴","dur":3.0,"fps":1.0,"frames":[{"legs":"tuck","aL":"up","aR":"up","eyes":"closed","mouth":"open"}],"roll":540.0,"move":120.0,"events":[[2.9,"say:어지러…"]]},"shiver":{"label":"덜덜 추워","dur":4.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"wide","mouth":"o"}],"jitter":true,"says":["으으 추워…"],"fx":"❄","fxEvery":0.6},"hot":{"label":"더워","dur":4.0,"fps":4.0,"frames":[{"aR":"wave","eyes":"closed","mouth":"tongue"},{"aR":"up","eyes":"closed","mouth":"tongue"}],"says":["더워어어~"],"fx":"💦","fxEvery":0.5},"sneeze":{"label":"재채기","dur":2.6,"fps":2.0,"frames":[{"hy":-1.0,"by":11.0,"eyes":"closed","mouth":"o"},{"hy":-1.0,"by":11.0,"eyes":"closed","mouth":"open"}],"switchAt":1.5,"frames2":[{"hy":2.0,"by":13.0,"aL":"out","aR":"out","eyes":"closed","mouth":"open","sx":1.15,"sy":0.85}],"events":[[0.1,"say:아… 아…"],[1.5,"boing:에취!!"],[1.5,"shake"]]},"hiccup":{"label":"딸꾹질","dur":4.0,"fps":1.0,"frames":[{"eyes":"wide","mouth":"o"}],"events":[[0.5,"fl:딸꾹!"],[0.5,"pop"],[1.6,"fl:딸꾹!"],[1.6,"pop"],[2.8,"fl:딸꾹!"],[2.8,"pop"]],"hop":4.0,"hopRate":0.9},"yawn":{"label":"하품","dur":3.0,"fps":1.0,"frames":[{"aR":"up","eyes":"closed","mouth":"open","sy":1.05}],"says":["하아아암…"]},"cry":{"label":"엉엉 울기","dur":4.0,"fps":3.0,"frames":[{"aL":"hold","aR":"hold","eyes":"tear","mouth":"open"},{"hy":1.0,"by":13.0,"aL":"hold","aR":"hold","eyes":"tear","mouth":"o"}],"says":["흑흑… 월요일 싫어","엉엉…"],"fx":"💧","fxEvery":0.5},"laugh":{"label":"깔깔 웃기","dur":3.5,"fps":6.0,"frames":[{"aL":"hip","aR":"hip","eyes":"closed","mouth":"grin"},{"hy":1.0,"by":13.0,"aL":"hip","aR":"hip","eyes":"closed","mouth":"open"}],"fx":"ㅋ","fxEvery":0.3,"says":["푸하하하!"]},"angry":{"label":"버럭","dur":3.0,"fps":6.0,"frames":[{"aL":"out","aR":"out","eyes":"angry","mouth":"open"},{"aL":"up","aR":"up","eyes":"angry","mouth":"grin"}],"jitter":true,"says":["아 진짜!!","누가 내 푸딩 먹었어!"],"fx":"💢","fxEvery":0.5},"love":{"label":"사랑해요","dur":3.5,"fps":1.5,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"smile","blush":true},{"hy":1.0,"by":13.0,"aL":"up","aR":"up","eyes":"closed","mouth":"smile","blush":true}],"says":["사랑해요~ 💕"],"fx":"💕","fxEvery":0.35},"shy":{"label":"부끄부끄","dur":3.5,"fps":2.0,"frames":[{"hx":-1.0,"aL":"hold","aR":"hold","eyes":"closed","look":-1.0,"mouth":"smile","blush":true,"rot":-4.0},{"hx":1.0,"aL":"hold","aR":"hold","eyes":"closed","mouth":"smile","blush":true,"rot":4.0}],"says":["아잉… 부끄러워"]},"think":{"label":"생각 중","dur":4.0,"fps":0.7,"frames":[{"hy":-1.0,"aR":"hold","look":-1.0},{"aR":"hold","eyes":"closed"}],"says":["흠…"],"fx":"💭","fxEvery":1.2},"idea":{"label":"번뜩 아이디어","dur":3.0,"fps":0.7,"frames":[{"aR":"hold","look":-1.0},{"aR":"hold","eyes":"closed"}],"switchAt":1.6,"frames2":[{"aR":"up","eyes":"sparkle","mouth":"grin","sy":1.06}],"events":[[1.6,"boing:💡 아하!"],[1.6,"pop"]]},"salute":{"label":"경례","dur":2.5,"fps":1.0,"frames":[{"aR":"wave","eyes":"angry","sy":1.04}],"says":["충성!"]},"bow":{"label":"꾸벅 인사","dur":2.5,"fps":1.2,"frames":[{"mouth":"smile"},{"hy":3.0,"by":13.0,"eyes":"closed","mouth":"smile","sy":0.92}],"says":["안녕하세요~","수고하셨습니다!"]},"clap":{"label":"박수","dur":3.0,"fps":6.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed","mouth":"grin"},{"aL":"out","aR":"out","mouth":"grin"}],"fx":"👏","fxEvery":0.35,"says":["짝짝짝!"]},"cheer":{"label":"응원","dur":3.5,"fps":4.0,"frames":[{"aL":"up","aR":"out","mouth":"open"},{"aL":"out","aR":"up","mouth":"grin"}],"hop":3.0,"hopRate":2.0,"says":["화이팅!!","할 수 있다!!"]},"flex":{"label":"근육 자랑","dur":3.0,"fps":1.5,"frames":[{"aL":"up","aR":"up","eyes":"angry","mouth":"grin","sx":1.1},{"aL":"up","aR":"up","eyes":"wink","mouth":"grin","sx":1.12}],"says":["💪 이 근육 봐라"]},"kungfu":{"label":"쿵푸","dur":3.5,"fps":3.0,"frames":[{"legs":"kick","aL":"hip","aR":"out","eyes":"angry","mouth":"open"},{"legs":"walkA","aL":"out","aR":"hip","eyes":"angry"}],"fx":"하앗!","fxEvery":0.7},"boxing":{"label":"쉐도우 복싱","dur":3.5,"fps":6.0,"frames":[{"hx":1.0,"legs":"walkA","aL":"hold","aR":"out","eyes":"angry"},{"legs":"walkA","aL":"out","aR":"hold","eyes":"angry"}],"fx":"퍽!","fxEvery":0.45},"sleepwalk":{"label":"몽유병","dur":5.0,"fps":2.0,"frames":[{"legs":"walkA","aL":"out","aR":"out","eyes":"closed","mouth":"o"},{"legs":"walkB","aL":"out","aR":"out","eyes":"closed"}],"move":25.0,"fx":"z","fxEvery":0.8,"fxKind":"z"},"trip":{"label":"꽈당","dur":3.5,"fps":6.0,"frames":[{"legs":"walkA","mouth":"smile"},{"legs":"walkB"}],"move":90.0,"switchAt":1.0,"frames2":[{"eyes":"wide","mouth":"open","lying":true}],"events":[[1.0,"boing:꽈당!"],[1.0,"shake"],[2.2,"say:아야야…"]]},"hide":{"label":"숨바꼭질","dur":5.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed"}],"switchAt":3.5,"frames2":[{"aR":"out","eyes":"wide","mouth":"grin"}],"events":[[0.2,"say:하나… 둘… 셋…"],[3.5,"boing:찾았다!"]]},"chickenEat":{"label":"치킨 먹방","dur":5.0,"fps":2.5,"frames":[{"aR":"hold","mouth":"open","prop":"drumstick"},{"aR":"hold","eyes":"closed","blush":true,"prop":"drumstick"}],"says":["치킨은 진리…","냠냠 쩝쩝"],"fx":"🍗","fxEvery":0.9},"icecream":{"label":"아이스크림","dur":4.0,"fps":2.0,"frames":[{"aR":"hold","mouth":"tongue","prop":"icecream"},{"aR":"hold","eyes":"closed","mouth":"smile","blush":true,"prop":"icecream"}],"fx":"❤","fxEvery":0.8},"balloon":{"label":"풍선 둥실","dur":5.0,"fps":1.0,"frames":[{"aR":"out","mouth":"smile","prop":"balloon"}],"float":8.0,"says":["둥실둥실~"]},"camera":{"label":"사진 찍기","dur":3.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"wink","prop":"camera"}],"events":[[1.3,"flash"],[1.3,"fl:찰칵!"],[1.3,"pop"],[2.2,"say:잘 나왔다!"]]},"laptop":{"label":"노트북 업무","dur":6.0,"fps":4.0,"frames":[{"hy":2.0,"by":14,"ly":20,"legs":"sit","prop":"laptop"},{"hy":2.0,"by":14,"ly":20,"legs":"sit","look":-1.0,"prop":"laptop"}],"fx":"타닥","fxEvery":0.5,"says":["보고서 진행해줘…","결재 올려야 하는데…"]},"doze":{"label":"꾸벅꾸벅 졸기","dur":5.0,"fps":1.2,"frames":[{"hy":2.0,"by":14,"ly":20,"legs":"sit","eyes":"closed"},{"hy":4.0,"by":14,"ly":20,"legs":"sit","eyes":"closed"}],"fx":"z","fxEvery":0.9,"fxKind":"z","switchAt":4.2,"frames2":[{"hy":1.0,"by":14,"ly":20,"legs":"sit","eyes":"wide","mouth":"o"}],"events":[[4.2,"boing:헉! 안 잤어요!"]]},"flower":{"label":"꽃 향기","dur":4.0,"fps":0.8,"frames":[{"aR":"hold","eyes":"closed","mouth":"smile","blush":true,"prop":"flower"},{"aR":"hold","eyes":"closed","mouth":"o","prop":"flower"}],"says":["음~ 좋은 향기"],"fx":"🌸","fxEvery":0.8},"wink":{"label":"윙크","dur":2.5,"fps":1.0,"frames":[{"aR":"wave","eyes":"wink","mouth":"smile","blush":true}],"says":["😉 찡긋"],"fx":"✨","fxEvery":0.7},"ballet":{"label":"발레","dur":4.0,"fps":1.0,"frames":[{"legs":"kick","aL":"up","aR":"up","eyes":"closed","mouth":"smile"}],"spin":6.0,"fx":"✨","fxEvery":0.4},"robot":{"label":"로봇 춤","dur":4.0,"fps":3.0,"frames":[{"legs":"walkA","aL":"out"},{"hx":1.0,"legs":"walkB","aR":"out"},{"aL":"up","aR":"up"}],"says":["삐-빅. 진행합니다."],"fx":"⚙","fxEvery":0.8},"offwork":{"label":"칼퇴근","dur":4.0,"fps":8.0,"frames":[{"legs":"walkA","aR":"wave","mouth":"grin"},{"legs":"walkB","aR":"up","mouth":"grin"}],"move":110.0,"says":["칼퇴!! 내일 봐요 👋"]},"jumprope":{"label":"줄넘기","dur":4.0,"fps":4.0,"frames":[{"legs":"tuck","aL":"out","aR":"out"},{"aL":"hip","aR":"hip"}],"hop":4.0,"hopRate":2.0,"fx":"💦","fxEvery":0.9,"events":[[0.5,"fl:1"],[1.0,"fl:2"],[1.5,"fl:3"],[2.0,"fl:4"],[2.5,"fl:5"]]},"heartShot":{"label":"하트 발사","dur":3.0,"fps":3.0,"frames":[{"aL":"out","aR":"out","eyes":"wink","mouth":"smile","prop":"heart"},{"aL":"hold","aR":"hold","mouth":"smile","blush":true}],"fx":"💖","fxEvery":0.25,"says":["뿅! 💘"]},"pray":{"label":"소원 빌기","dur":4.0,"fps":1.0,"frames":[{"aL":"hold","aR":"hold","eyes":"closed","mouth":"o"}],"says":["로또 1등 되게 해주세요…"],"fx":"✨","fxEvery":0.6},"stretchSide":{"label":"옆구리 스트레칭","dur":3.5,"fps":1.0,"frames":[{"aL":"up","aR":"up","eyes":"closed","rot":-10.0},{"aL":"up","aR":"up","eyes":"closed","rot":10.0}],"says":["으차~"]},"cCrow":{"label":"꼬끼오 울기","dur":3.0,"fps":2.0,"frames":[{"hy":-1.0,"aL":"out","aR":"out","eyes":"closed","mouth":"open","sy":1.08},{"aL":"up","aR":"up","eyes":"closed","mouth":"open"}],"chicken":true,"w":1.2,"events":[[0.3,"boing:꼬끼오~!!"],[0.3,"pop"]]},"cPeck":{"label":"모이 쪼기","dur":4.0,"fps":4.0,"frames":[{},{"hy":3.0,"by":13.0,"eyes":"closed","sy":0.94}],"chicken":true,"w":1.2,"fx":"·","fxEvery":0.25,"says":["콕콕콕"]},"cEgg":{"label":"알 낳기","dur":3.5,"fps":6.0,"frames":[{"eyes":"closed","mouth":"o","sx":1.1,"sy":0.9},{"eyes":"closed","mouth":"open","sy":0.95}],"chicken":true,"w":1.0,"jitter":true,"switchAt":2.2,"frames2":[{"eyes":"sparkle","mouth":"smile","blush":true}],"events":[[0.1,"say:끄응…"],[2.2,"boing:🥚 뿅!"],[2.2,"pop"]]},"cHappy":{"label":"행복한 날갯짓","dur":4.0,"fps":8.0,"frames":[{"aL":"up","aR":"up","eyes":"closed","mouth":"smile","blush":true},{"aL":"out","aR":"out","eyes":"closed","mouth":"open","blush":true}],"chicken":true,"w":1.4,"hop":5.0,"hopRate":2.5,"fx":"💕","fxEvery":0.3,"says":["행복해~!","꼬꼬꼬~ 신난다"]},"cDance":{"label":"닭 댄스","dur":4.0,"fps":5.0,"frames":[{"hx":-1.0,"legs":"walkA","aL":"up","aR":"out","mouth":"open"},{"hx":1.0,"legs":"walkB","aL":"out","aR":"up","mouth":"smile"}],"chicken":true,"w":1.2,"fx":"♪","fxEvery":0.35,"says":["치킨 댄스~ 🐔"]}}
+;
+const DEFS={
+ bear:{id:'bear',name:'여유곰',tapSay:'곰발바닥~ 🐾',sleepMin:10,sleepMax:16,moves:BEAR_MOVES,draw:(g,p)=>drawBear(g,p),
+  specials:[['idle','여유롭게 서있기'],['walk','어슬렁 걷기'],['run','달리기'],['jump','점프'],['sit','앉기'],['sleep','푹 자기'],['wave','손인사'],['dance','곰 댄스'],['look','두리번'],['stretch','기지개'],['kick','⚽ 공차기 (유리 깸)']]},
+ pink:{id:'pink',name:'진행해줘 부장님',tapSay:'진행해줘!',sleepMin:6,sleepMax:9,moves:PINK_MOVES,draw:drawPink,
+  specials:[['idle','가만히'],['walk','걷기'],['run','달리기'],['jump','점프'],['sit','앉기'],['sleep','잠자기'],['wave','손인사'],['dance','춤추기'],['look','두리번'],['stretch','기지개'],['pen','펜 칼싸움'],['ramen','몰래 라면'],['power','파워업 변신'],['chicken','치킨 변신'],['cfly','🐔 하늘 날기']]}
+};
+const menuOf=d=>[...d.specials,...Object.entries(d.moves).map(([k,m])=>[k,(m.chicken?'🐔 ':'')+m.label])];
+
+/* 저장 (이 기기 브라우저에만) */
+const store={get(k,v){try{const s=localStorage.getItem('pf_'+k);return s===null?v:JSON.parse(s)}catch(e){return v}},set(k,v){try{localStorage.setItem('pf_'+k,JSON.stringify(v))}catch(e){}}};
+soundOn=store.get('sound',true);
+
+/* 홈 화면 */
+const APPS=[['📞','전화','#4cd07d'],['💬','메시지','#ffcd3c'],['📷','카메라','#5a6270'],['🖼️','갤러리','#ff7aa8'],['🌐','인터넷','#5b8cff'],['🎵','음악','#ff6b6b'],['📅','캘린더','#ffffff'],['🗺️','지도','#7fd6c2'],['☀️','날씨','#6fb8ff'],['🛒','쇼핑','#ff9f43'],['🎮','게임','#8e6cff'],['⚙️','설정','#9aa3b5'],['📝','메모','#ffe28a'],['⏰','시계','#3d3d5c'],['📚','공부','#5fc6a0'],['🚲','자전거','#f06292']];
+const grid=document.getElementById('grid'),dock=document.getElementById('dock');
+grid.innerHTML=APPS.map(a=>`<div class="app"><div class="ibox" style="background:${a[2]}">${a[0]}</div><span>${a[1]}</span></div>`).join('');
+dock.innerHTML=[['📞','#4cd07d'],['💬','#ffcd3c'],['🌐','#5b8cff'],['📷','#5a6270']].map(a=>`<div class="ibox" style="background:${a[1]}">${a[0]}</div>`).join('');
+const clock=document.getElementById('clock'),dateEl=document.getElementById('date');
+function tick(){const d=new Date();clock.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');dateEl.textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`}
+tick();setInterval(tick,10000);
+
+function computePlats(){plats=[];W=innerWidth;H=innerHeight;
+ grid.querySelectorAll('.ibox').forEach(el=>{const r=el.getBoundingClientRect();if(r.bottom<H-80&&r.height>0)plats.push({x1:r.left+2,x2:r.right-2,y:r.top,el})});
+ const d=dock.getBoundingClientRect();floorP={x1:-1e5,x2:1e5,y:d.top,floor:true,el:dock};plats.push(floorP);minX=12*SC;maxX=W-12*SC}
+window.ensureAudio=()=>{if(!actx){try{actx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(actx&&actx.state==='suspended')actx.resume()};
+
+/* 펫 관리 */
+const pets={};
+function syncPets(){for(const id of['bear','pink']){const on=store.get('on_'+id,true);
+  if(on&&!pets[id]){const p=new Pet(DEFS[id]);p.spawn(id==='bear'?.3:.7);pets[id]=p}
+  else if(!on&&pets[id]){pets[id].remove();delete pets[id]}}
+ if(pets.bear)pets.bear.onCrash=cx=>pets.pink&&pets.pink.interact('run',cx,'누구야!! 유리 누가 깼어!!');
+ if(pets.pink)pets.pink.onCrash=cx=>pets.bear&&pets.bear.interact('look',cx,'부장님… 화면이…');
+ renderPanel()}
+
+/* 둘이 만나면 */
+let interCool=3;
+function interactions(dt){const b=pets.bear,k=pets.pink;if(!b||!k)return;interCool-=dt;if(interCool>0)return;if(b.state==='away'||k.state==='away')return;
+ if(Math.abs(b.x-k.x)>13*SC||Math.abs(b.y-k.y)>18*SC)return;interCool=7;
+ if(['air','drag'].includes(b.state)||['air','drag'].includes(k.state)||b.act==='run'||k.act==='run'){b.bump(k.x);k.bump(b.x);return}
+ if(!b.canInteract||!k.canInteract){interCool=2;return}
+ if(k.form==='chicken'){b.interact('run',k.x,'치킨이다!! 🍗');k.interact('cfly',b.x,'꼬꼬댁!! 살려줘~');return}
+ const mid=(b.x+k.x)/2,top=Math.min(b.y,k.y)-24*SC;
+ switch(fl(Math.random()*6)){
+  case 0:b.interact('bow',k.x,'부장님 안녕하세요~');k.interact('wave',b.x,'어 왔어? 진행해줘!');break;
+  case 1:b.interact('pawWave',k.x,'하이파이브!');k.interact('wave',b.x,null);floatText('짝!',mid,top,'boing');sfx.pop();break;
+  case 2:b.interact('dance',k.x,'🎵 같이 춰요~');k.interact('dance',b.x,'오 좋아!');break;
+  case 3:k.interact('boxing',b.x,'덤벼라!');b.interact('kungfu',k.x,'곰발 펀치!');break;
+  case 4:k.interact('chickenEat',b.x,'치킨 먹을래?');b.interact('chickenEat',k.x,'좋아요!! 🍗');break;
+  default:b.bump(k.x);k.bump(b.x);b.say('앗 죄송!',1.4);k.say('어이쿠!',1.4)}}
+
+/* 메뉴 */
+const panel=document.getElementById('panel');let target=store.get('target','bear');
+window.openMenu=id=>{target=id;renderPanel();panel.classList.add('on')};
+document.getElementById('menuBtn').onclick=()=>{renderPanel();panel.classList.toggle('on')};
+function renderPanel(){
+ document.getElementById('toggles').innerHTML=['bear','pink'].map(id=>`<button data-t="${id}" class="${pets[id]?'on':'off'}">${DEFS[id].name} ${pets[id]?'켜짐':'꺼짐'}</button>`).join('');
+ document.getElementById('pickers').innerHTML=['bear','pink'].map(id=>`<button data-p="${id}" class="${target===id?'on':'off'}">${DEFS[id].name}에게 시키기</button>`).join('');
+ document.getElementById('sizes').innerHTML=[[2,'작게'],[3,'보통'],[4,'크게']].map(([v,l])=>`<button data-s="${v}" class="${SC===v?'on':''}">크기 ${l}</button>`).join('');
+ const d=DEFS[target];document.getElementById('moves').innerHTML=menuOf(d).map(([k,l])=>`<button data-m="${k}"></button>`).join('');
+ [...document.querySelectorAll('#moves button')].forEach((b,i)=>b.textContent=menuOf(d)[i][1]);
+ document.getElementById('snd').textContent=soundOn?'소리 켜짐 🔊':'소리 꺼짐 🔇'}
+function doMove(k){ensureAudio();if(!pets[target]){store.set('on_'+target,true);syncPets()}const p=pets[target];if(p){if(p.state==='act'||p.state==='land')p.force(k);else setTimeout(()=>p.force(k),800)}panel.classList.remove('on')}
+panel.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ensureAudio();
+ if(b.dataset.t){const id=b.dataset.t;store.set('on_'+id,!pets[id]);syncPets()}
+ else if(b.dataset.p){target=b.dataset.p;store.set('target',target);renderPanel()}
+ else if(b.dataset.s){store.set('size',+b.dataset.s);resize();renderPanel()}
+ else if(b.dataset.m)doMove(b.dataset.m)});
+document.getElementById('rand').onclick=()=>doMove(pick(menuOf(DEFS[target]))[0]);
+document.getElementById('snd').onclick=()=>{soundOn=!soundOn;store.set('sound',soundOn);renderPanel()};
+document.getElementById('go').onclick=()=>{ensureAudio();document.getElementById('intro').remove();store.set('seen',true)};
+if(store.get('seen',false)||matchMedia('(display-mode: standalone)').matches||navigator.standalone)document.getElementById('intro').remove();
+
+/* 루프 */
+function resize(){SC=store.get('size',innerWidth>=600?2.5:2);computePlats();for(const p of Object.values(pets)){if(p.state!=='drag'&&p.state!=='away'){p.x=Math.max(minX,Math.min(maxX,p.x));if(p.state!=='air')p.goAir(0,0,'fall')}}}
+addEventListener('resize',()=>setTimeout(resize,150));
+ball.init();resize();syncPets();
+let last=performance.now();
+function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;const ms=Date.now();
+ for(const p of Object.values(pets)){p.update(dt,ms);p.render(ms)}interactions(dt);ball.update(dt);requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+}
+</script>
+</body></html>
