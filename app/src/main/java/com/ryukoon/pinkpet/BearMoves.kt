@@ -4,16 +4,6 @@ package com.ryukoon.pinkpet
  * 여유곰 일반 모션.
  * events: (시간초, 명령) — "say:글", "boing:글", "fl:글", "shake", "flash", "pop"
  */
-class Move(
-    val label: String, val dur: Float, val fps: Float, val frames: List<Pose>,
-    val w: Float = .45f, val move: Float = 0f, val back: Boolean = false,
-    val says: List<String>? = null, val fx: String? = null, val fxEvery: Float = 0f, val fxKind: String = "",
-    val spin: Float = 0f, val roll: Float = 0f, val jitter: Boolean = false,
-    val hop: Float = 0f, val hopRate: Float = 0f, val float: Float = 0f,
-    val switchAt: Float = 99f, val frames2: List<Pose>? = null,
-    val events: List<Pair<Float, String>> = emptyList(), val chicken: Boolean = false
-)
-
 private fun P(
     hx: Int = 0, hy: Int = 0, by: Int = 12, ly: Int = 18, legs: String = "stand", aL: String = "down", aR: String = "down",
     eyes: String = "open", look: Int = 1, mouth: String = "flat", blush: Boolean = false, lying: Boolean = false,
@@ -27,7 +17,7 @@ private fun S(eyes: String = "open", mouth: String = "flat", hy: Int = 2, aL: St
 private fun L(eyes: String = "closed", mouth: String = "flat", aL: String = "down", aR: String = "down", prop: String? = null, blush: Boolean = false) =
     Pose(lying = true, eyes = eyes, mouth = mouth, aL = aL, aR = aR, prop = prop, blush = blush)
 
-object Moves {
+object BearMoves {
     val all: LinkedHashMap<String, Move> = linkedMapOf(
         // ---- 곰다운 모션 ----
         "pawlick" to Move("🐾 곰발바닥 핥기", 5f, 2.5f, listOf(S(aR = "paw", mouth = "tongue", eyes = "closed", blush = true), S(aR = "paw", mouth = "tongue", eyes = "closed", hy = 3)),

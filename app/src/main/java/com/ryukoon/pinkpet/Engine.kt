@@ -20,10 +20,6 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-object Catalog {
-    val menu: List<Pair<String, String>> get() = Flavor.specials + Moves.all.map { (k, m) -> k to (if (m.chicken) "🐔 " else "") + m.label }
-}
-
 class Plat(val x1: Float, val x2: Float, val y: Float, val floor: Boolean)
 
 class Floater(val text: String, val kind: String, val x: Float, val y: Float) { var age = 0f }
@@ -36,7 +32,7 @@ class ActDef(val label: String, val d0: Float, val d1: Float, val w: Float, val 
              val says: List<String>? = null, val fx: String? = null, val fxEvery: Float = 0f, val fxKind: String = "")
 
 /** 펫의 움직임·모션·효과를 모두 계산하는 두뇌 */
-class Engine(private val density: Float, private val sfx: Sfx, private val openMenu: () -> Unit) {
+class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef, private val openMenu: () -> Unit) {
     private val D = density
     var SC = 2f * D
     private val G get() = 2600f * D
@@ -74,7 +70,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         "run" to ActDef("달리기", 1.5f, 3f, 1.2f, move = 180f, fx = "💦", fxEvery = .6f),
         "jump" to ActDef("점프", .3f, .3f, 1.6f),
         "sit" to ActDef("앉기", 3f, 6f, 1f),
-        "sleep" to ActDef("잠자기", Flavor.sleepMin, Flavor.sleepMax, .9f, fx = "z", fxEvery = .8f, fxKind = "z"),
+        "sleep" to ActDef("잠자기", def.sleepMin, def.sleepMax, .9f, fx = "z", fxEvery = .8f, fxKind = "z"),
         "kick" to ActDef("공차기", 99f, 99f, 1f),
         "wave" to ActDef("손인사", 1.8f, 2.6f, 1f, says = listOf("안녕! 👋", "반가워!", "하이~")),
         "dance" to ActDef("춤추기", 3f, 5f, 1f, fx = "♪", fxEvery = .5f),
@@ -87,7 +83,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         "cfly" to ActDef("하늘 날기", 8f, 12f, 2.5f)
     )
     private val chickenOnly = setOf("cfly")
-    private val allowed: Set<String> = Flavor.specials.map { it.first }.toSet()
+    private val allowed: Set<String> = def.specials.map { it.first }.toSet()
     // 비행·일반 모션용 변수
     private var tx = 0f; private var ty = 0f; private var fvx = 0f; private var fvy = 0f; private var loopT = 0f; private var sayT = 0f; private var evIdx = 0
     val drawY get() = y - pose.lift * SC
@@ -115,7 +111,34 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         }
     }
 
-    fun spawn() { x = W / 2; y = -40 * D; goAir(0f, 0f, "fall") }
+    fun spawn(frac: Float = .5f) { x = (W * frac).coerceIn(minX, maxX); y = -40 * D; goAir(0f, 0f, "fall") }
+
+    // ================= 다른 펫과의 상호작용 =================
+    var onCrash: ((Float) -> Unit)? = null
+    val stateName get() = state
+    val actName get() = act
+    val isChicken get() = form == Form.CHICKEN
+    private val busyActs = setOf("pen", "kick", "power", "chicken", "cfly", "ramen")
+    /** 다른 펫이 끼어들어도 되는 상태인지 */
+    val canInteract get() = (state == "act" && act !in busyActs && def.moves[act]?.events?.isEmpty() != false) || state == "land"
+    fun has(name: String) = (acts.containsKey(name) && name in allowed) || def.moves.containsKey(name)
+    fun interact(name: String, faceX: Float, text: String?) {
+        if (!has(name) || (state != "act" && state != "land")) return
+        if (plat == null) plat = floor
+        y = plat?.y ?: floor.y
+        startAct(name)
+        dir = if (faceX >= x) 1 else -1
+        if (text != null) say(text, 1.8f)
+    }
+    fun bump(fromX: Float) {
+        if (state == "drag" || state == "away") return
+        val d = if (x >= fromX) 1 else -1
+        dir = -d
+        goAir(d * 320 * D, -560 * D, "fall")
+        floater("띠용!", "boing"); sfx.boing(.8f); sfx.vibrate(20)
+    }
+    fun talk(text: String) { if (state != "away") say(text, 1.6f) }
+    fun popAt(text: String, px: Float, py: Float) { floaters.add(Floater(text, "boing", px, py)) }
 
     // ================= 말풍선 / 떠오르는 글자 =================
     private fun headX() = x
@@ -127,18 +150,18 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
 
     // ================= 모션 시작 =================
     fun force(name: String) {
-        if (!(acts.containsKey(name) && name in allowed) && !Moves.all.containsKey(name)) return
+        if (!(acts.containsKey(name) && name in allowed) && !def.moves.containsKey(name)) return
         if (state == "act" || state == "land") { if (plat == null) plat = floor; startAct(name) }
     }
 
     private fun startAct(name: String) {
         state = "act"; act = name; t = 0f; fxFrame = -1; launched = false; edge = null; last = name; evIdx = 0; fxT = 0f
-        val needChicken = name in chickenOnly || Moves.all[name]?.chicken == true
+        val needChicken = name in chickenOnly || def.moves[name]?.chicken == true
         if (needChicken && form != Form.CHICKEN) {
             form = Form.CHICKEN; formT = 40f; flash(.5f)
             repeat(4) { floater("💨", "", rnd(-24f, 24f)) }; floater("펑!", "boing"); sfx.tone("square", 300f, 150f, 600f, .35f, .22f)
         }
-        val mv = Moves.all[name]
+        val mv = def.moves[name]
         if (mv != null) {
             dur = mv.dur; ph = 0; kt = 0f
             mv.says?.let { say(it.random(), 1.6f) }
@@ -158,14 +181,14 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
 
     private fun weightOf(k: String): Float {
         val ch = form == Form.CHICKEN
-        val mv = Moves.all[k]
+        val mv = def.moves[k]
         if (mv != null) return if (mv.chicken) (if (ch) mv.w else 0f) else (if (ch) mv.w * .4f else mv.w)
         if (k in chickenOnly) return if (ch) acts.getValue(k).w else 0f
         return acts.getValue(k).w
     }
 
     private fun nextAct() {
-        val keys = (acts.keys.filter { it in allowed } + Moves.all.keys).filter { it != last && !(it == "kick" && (plat?.floor != true || bState != "none")) }
+        val keys = (acts.keys.filter { it in allowed } + def.moves.keys).filter { it != last && !(it == "kick" && (plat?.floor != true || bState != "none")) }
         val total = keys.sumOf { weightOf(it).toDouble() }.toFloat()
         var r = Random.nextFloat() * total
         for (k in keys) { r -= weightOf(k); if (r <= 0f) { startAct(k); return } }
@@ -228,7 +251,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         if (longFired) return
         val prev = dPrevPlat
         if (dMoved < 10 * D && dTime < .35f && prev != null) {
-            plat = prev; y = prev.y; startAct("wave"); say(Flavor.tapSay, 1.3f); floater("❤"); sfx.pop(); return
+            plat = prev; y = prev.y; startAct("wave"); say(def.tapSay, 1.3f); floater("❤"); sfx.pop(); return
         }
         var nvx = 0f; var nvy = 0f
         val recent = hist.filter { clock - it[0] < .11f }
@@ -250,7 +273,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
 
         if (state == "act") {
             t += dt
-            val mv = Moves.all[act]
+            val mv = def.moves[act]
             if (mv != null) {
                 moveUpdate(mv, dt)
                 if (state == "act") {
@@ -348,7 +371,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
                         if (s != sw) { sw = s; sfx.swish(); if (s % 2 == 0) floater("슉!", "", dir * 14f) }
                         if (kt > 2f) { ph = 2; kt = 0f; say("필살… 찌르기!", 1.1f) }
                     }
-                    2 -> if (kt > .7f) { ph = 3; kt = 0f; sfx.stab(); shatter(x + dir * 9 * SC, y - 11 * SC, true) }
+                    2 -> if (kt > .7f) { ph = 3; kt = 0f; sfx.stab(); shatter(x + dir * 9 * SC, y - 11 * SC, true); onCrash?.invoke(x) }
                     3 -> if (kt > .7f) { ph = 4; kt = 0f; say("어… 어떡해!!", 1.4f) }
                     4 -> {
                         ks2 += dt; if (ks2 > .45f) { ks2 = 0f; floater("💦", "", rnd(-12f, 12f)) }
@@ -533,6 +556,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
             val right = bx >= W - r
             bx = if (right) W - r else r; bCrashed = true
             shatter(if (right) W else 0f, bY - r, false)
+            onCrash?.invoke(bx)
             bvx = -bvx * .22f; bvy = -180 * D
         }
         if (bCrashed) { bx = bx.coerceIn(r, W - r); bT += dt; if (bT > 2.8f) bState = "none" }
@@ -609,7 +633,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
     /** 펫 창 안에 캐릭터를 그린다. (ox, oy) = 창의 화면 좌표 */
     fun drawPet(c: Canvas, ox: Float, oy: Float, nowMs: Long) {
         val p = pose
-        val bmp = Sprite.render(p, form, nowMs)
+        val bmp = def.render(p, form, nowMs)
         c.save()
         c.translate(x - ox, drawY - oy)
         c.scale(dir * p.sx, p.sy)

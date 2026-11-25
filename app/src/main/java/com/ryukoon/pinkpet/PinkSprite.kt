@@ -6,7 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 
 /** 8bit 캐릭터를 24x24 비트맵에 그린다. */
-object Sprite {
+object PinkSprite {
     private fun c(hex: String) = Color.parseColor(hex)
 
     private val HAIR = c("#1a1a20"); private val HAIR_HI = c("#3a3a46")

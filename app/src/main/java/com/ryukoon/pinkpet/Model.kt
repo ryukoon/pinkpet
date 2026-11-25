@@ -1,5 +1,7 @@
 package com.ryukoon.pinkpet
 
+import android.graphics.Bitmap
+
 enum class Form { NORMAL, POWER, CHICKEN }
 
 /** 한 프레임의 자세. 좌표 단위는 24x24 도트 그리드. */
@@ -13,3 +15,59 @@ data class Pose(
     var sx: Float = 1f, var sy: Float = 1f, var rot: Float = 0f
 )
 
+
+/** 프레임 목록으로 만드는 일반 모션. events: (시간초, 명령) — "say:글", "boing:글", "fl:글", "shake", "flash", "pop" */
+class Move(
+    val label: String, val dur: Float, val fps: Float, val frames: List<Pose>,
+    val w: Float = .45f, val move: Float = 0f, val back: Boolean = false,
+    val says: List<String>? = null, val fx: String? = null, val fxEvery: Float = 0f, val fxKind: String = "",
+    val spin: Float = 0f, val roll: Float = 0f, val jitter: Boolean = false,
+    val hop: Float = 0f, val hopRate: Float = 0f, val float: Float = 0f,
+    val switchAt: Float = 99f, val frames2: List<Pose>? = null,
+    val events: List<Pair<Float, String>> = emptyList(), val chicken: Boolean = false
+)
+
+
+/** 캐릭터 정의 (부장님 / 여유곰) */
+interface CharDef {
+    val id: String
+    val name: String
+    val tapSay: String
+    val sleepMin: Float
+    val sleepMax: Float
+    val specials: List<Pair<String, String>>
+    val moves: LinkedHashMap<String, Move>
+    fun render(p: Pose, f: Form, nowMs: Long): Bitmap
+    val menu: List<Pair<String, String>> get() = specials + moves.map { (k, m) -> k to (if (m.chicken) "🐔 " else "") + m.label }
+}
+
+object PinkDef : CharDef {
+    override val id = "pink"
+    override val name = "진행해줘 부장님"
+    override val tapSay = "진행해줘!"
+    override val sleepMin = 6f
+    override val sleepMax = 9f
+    override val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
+        "sleep" to "잠자기", "wave" to "손인사", "dance" to "춤추기", "look" to "두리번", "stretch" to "기지개",
+        "pen" to "펜 칼싸움", "ramen" to "몰래 라면", "power" to "파워업 변신", "chicken" to "치킨 변신", "cfly" to "🐔 하늘 날기")
+    override val moves get() = PinkMoves.all
+    override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = PinkSprite.render(p, f, nowMs)
+}
+
+object BearDef : CharDef {
+    override val id = "bear"
+    override val name = "여유곰"
+    override val tapSay = "곰발바닥~ 🐾"
+    override val sleepMin = 10f
+    override val sleepMax = 16f
+    override val specials = listOf("idle" to "여유롭게 서있기", "walk" to "어슬렁 걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
+        "sleep" to "푹 자기", "wave" to "손인사", "dance" to "곰 댄스", "look" to "두리번", "stretch" to "기지개",
+        "kick" to "⚽ 공차기 (유리 깸)")
+    override val moves get() = BearMoves.all
+    override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = BearSprite.render(p, f, nowMs)
+}
+
+object Chars {
+    val all: List<CharDef> = listOf(BearDef, PinkDef)
+    fun byId(id: String?): CharDef? = all.firstOrNull { it.id == id }
+}

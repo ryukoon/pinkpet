@@ -6,14 +6,14 @@ import android.graphics.Color
 import android.graphics.Paint
 
 /** 여유곰: 곰 귀, 검은 머리, 동그란 안경, 검정 패딩 */
-object Sprite {
+object BearSprite {
     private fun c(hex: String) = Color.parseColor(hex)
 
     private val FUR = c("#b9783f"); private val FUR_SH = c("#9a5f2e"); private val EAR_IN = c("#e3b07a")
     private val MUZ = c("#f1ddb8"); private val NOSE = c("#3a2420"); private val MOUTH = c("#7a4a3a")
     private val HAIR = c("#1a1a20"); private val HAIR_HI = c("#3a3a46")
-    private val GLASS = c("#4a3020"); private val LENS = c("#e3f0fb"); private val EYE = c("#1c1b24"); private val LID = c("#6a4020")
-    private val JACKET = c("#2a2a32"); private val JACKET_LN = c("#3d3d48"); private val JACKET_HI = c("#4a4a58"); private val ZIP = c("#70707e")
+    private val GLASS = c("#2a2a30"); private val LENS = c("#e3f0fb"); private val EYE = c("#1c1b24"); private val LID = c("#6a4020")
+    private val JACKET = c("#2c2c34"); private val JACKET_LN = c("#33333c"); private val JACKET_HI = c("#3e3e4a"); private val ZIP = c("#5c5c6a")
     private val PANTS = c("#3a3f58"); private val SHOE = c("#4a3426"); private val PAD = c("#f2a0a8")
     private val M_IN = c("#6b2230"); private val BLUSH = c("#f29a9a"); private val SPARK = c("#ffe45e"); private val TEAR = c("#5bc0ff"); private val TONGUE = c("#ff7a9a")
 
@@ -47,7 +47,7 @@ object Sprite {
         legs(p.legs, p.ly)
         // 검정 패딩
         px(4, by, 13, 6, JACKET)
-        px(4, by + 1, 13, 1, JACKET_LN); px(4, by + 3, 13, 1, JACKET_LN); px(4, by + 5, 13, 1, JACKET_LN)
+        px(4, by + 2, 13, 1, JACKET_LN); px(4, by + 4, 13, 1, JACKET_LN); px(4, by, 1, 1, Color.TRANSPARENT); px(16, by, 1, 1, Color.TRANSPARENT)
         px(6, by, 9, 1, JACKET_HI); px(8, by, 5, 1, FUR); px(10, by, 1, 6, ZIP)
         px(6, by + 2, 1, 2, ZIP); px(14, by + 2, 1, 2, ZIP)
         arm(-1, p.aL, by); arm(1, p.aR, by)
@@ -101,22 +101,24 @@ object Sprite {
         val hx = p.hx; val hy = p.hy
         fun h(x: Int, y: Int, w: Int, ht: Int, col: Int) = px(x + hx, y + hy, w, ht, col)
         // 귀
-        h(3, 1, 3, 3, FUR); h(4, 2, 1, 1, EAR_IN); h(15, 1, 3, 3, FUR); h(16, 2, 1, 1, EAR_IN)
-        // 얼굴 털
-        h(4, 4, 13, 7, FUR); h(5, 11, 11, 1, FUR); h(3, 6, 1, 4, FUR); h(17, 6, 1, 4, FUR)
-        h(4, 10, 1, 1, FUR_SH); h(16, 10, 1, 1, FUR_SH); h(3, 9, 1, 1, FUR_SH); h(17, 9, 1, 1, FUR_SH)
-        // 부스스한 검은 머리
-        h(6, 0, 1, 1, HAIR); h(9, 0, 1, 1, HAIR); h(12, 0, 1, 1, HAIR); h(14, 0, 1, 1, HAIR)
-        h(5, 1, 11, 3, HAIR); h(8, 2, 4, 1, HAIR_HI)
-        h(5, 4, 2, 1, HAIR); h(8, 4, 1, 1, HAIR); h(12, 4, 2, 1, HAIR); h(15, 4, 1, 1, HAIR)
-        // 주둥이 + 코
-        h(7, 8, 7, 3, MUZ); h(8, 11, 5, 1, MUZ)
+        // 동그란 곰 귀
+        h(3, 1, 4, 3, FUR); h(4, 0, 2, 1, FUR); h(4, 1, 2, 2, EAR_IN)
+        h(14, 1, 4, 3, FUR); h(15, 0, 2, 1, FUR); h(15, 1, 2, 2, EAR_IN)
+        // 둥근 얼굴 털
+        h(5, 3, 11, 1, FUR); h(4, 4, 13, 7, FUR); h(5, 11, 11, 1, FUR); h(3, 5, 1, 5, FUR); h(17, 5, 1, 5, FUR)
+        h(3, 9, 1, 1, FUR_SH); h(17, 9, 1, 1, FUR_SH); h(4, 10, 1, 1, FUR_SH); h(16, 10, 1, 1, FUR_SH)
+        // 부스스한 검은 머리 (정수리)
+        h(7, 0, 1, 1, HAIR); h(10, 0, 1, 1, HAIR); h(13, 0, 1, 1, HAIR)
+        h(6, 1, 9, 2, HAIR); h(6, 3, 2, 1, HAIR); h(9, 3, 3, 1, HAIR); h(13, 3, 2, 1, HAIR); h(8, 1, 3, 1, HAIR_HI)
+        h(10, 4, 1, 1, HAIR)
+        // 큰 주둥이 + 코
+        h(8, 8, 5, 1, MUZ); h(7, 9, 7, 2, MUZ); h(8, 11, 5, 1, MUZ)
         h(9, 8, 3, 1, NOSE); h(10, 9, 1, 1, NOSE)
-        // 동그란 안경
+        // 동그란 얇은 안경
         for (gx in intArrayOf(6, 11)) {
-            h(gx, 5, 4, 1, GLASS); h(gx, 7, 4, 1, GLASS); h(gx, 6, 1, 1, GLASS); h(gx + 3, 6, 1, 1, GLASS); h(gx + 1, 6, 2, 1, LENS)
+            h(gx + 1, 5, 2, 1, GLASS); h(gx + 1, 7, 2, 1, GLASS); h(gx, 6, 1, 1, GLASS); h(gx + 3, 6, 1, 1, GLASS); h(gx + 1, 6, 2, 1, LENS)
         }
-        h(10, 6, 1, 1, GLASS); h(5, 6, 1, 1, GLASS); h(15, 6, 1, 1, GLASS)
+        h(10, 6, 1, 1, GLASS)
         val l = if (p.look < 0) 0 else 1
         when (p.eyes) {
             "closed" -> { h(7, 6, 2, 1, LID); h(12, 6, 2, 1, LID) }

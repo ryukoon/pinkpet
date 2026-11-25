@@ -4,16 +4,6 @@ package com.ryukoon.pinkpet
  * 프레임 목록으로 만드는 일반 모션.
  * events: (시간초, 명령) — "say:글", "boing:글", "fl:글", "shake", "flash", "pop"
  */
-class Move(
-    val label: String, val dur: Float, val fps: Float, val frames: List<Pose>,
-    val w: Float = .45f, val move: Float = 0f, val back: Boolean = false,
-    val says: List<String>? = null, val fx: String? = null, val fxEvery: Float = 0f, val fxKind: String = "",
-    val spin: Float = 0f, val roll: Float = 0f, val jitter: Boolean = false,
-    val hop: Float = 0f, val hopRate: Float = 0f, val float: Float = 0f,
-    val switchAt: Float = 99f, val frames2: List<Pose>? = null,
-    val events: List<Pair<Float, String>> = emptyList(), val chicken: Boolean = false
-)
-
 private fun P(
     hx: Int = 0, hy: Int = 0, by: Int = 12, ly: Int = 18, legs: String = "stand", aL: String = "down", aR: String = "down",
     eyes: String = "open", look: Int = 1, mouth: String = "flat", blush: Boolean = false, lying: Boolean = false,
@@ -24,7 +14,7 @@ private fun P(
 private fun sitP(eyes: String = "open", mouth: String = "flat", hy: Int = 2, aR: String = "down", prop: String? = null, blush: Boolean = false, look: Int = 1) =
     Pose(by = 14, hy = hy, ly = 20, legs = "sit", eyes = eyes, mouth = mouth, aR = aR, prop = prop, blush = blush, look = look)
 
-object Moves {
+object PinkMoves {
     val all: LinkedHashMap<String, Move> = linkedMapOf(
         "coffee" to Move("커피 한잔", 5f, 1.2f, listOf(P(aR = "hold", prop = "coffee"), P(aR = "hold", prop = "coffee", eyes = "closed", mouth = "o", hy = -1)),
             says = listOf("커피는 역시 아아…", "후~ 살 것 같다"), fx = "~", fxEvery = .6f, fxKind = "z"),
