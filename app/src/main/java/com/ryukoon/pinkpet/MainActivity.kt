@@ -38,8 +38,8 @@ class MainActivity : Activity() {
             setPadding((20 * dp).toInt(), (24 * dp).toInt(), (20 * dp).toInt(), (32 * dp).toInt())
             setBackgroundColor(Color.parseColor("#f7eef2"))
         }
-        root.addView(text("진행해줘 펫 🐔", 26f, true, darkC))
-        root.addView(text("핑크 스웨터 아저씨가 홈 화면과 다른 앱 위를 돌아다녀요.", 14f, false, Color.DKGRAY))
+        root.addView(text(Flavor.title, 26f, true, darkC))
+        root.addView(text(Flavor.subtitle, 14f, false, Color.DKGRAY))
         status = text("", 14f, true, purple); root.addView(status)
 
         root.addView(section("1. 처음 한 번만 설정"))
@@ -56,7 +56,7 @@ class MainActivity : Activity() {
 
         root.addView(section("3. 모션 골라서 시키기 (${acts.size}종)"))
         root.addView(button("🎲 아무거나 랜덤!") { sendAct(acts.random().first) })
-        root.addView(text("🐔 표시는 닭으로 변신해서 하는 모션이에요.", 13f, false, Color.DKGRAY))
+        root.addView(text(Flavor.menuNote, 13f, false, Color.DKGRAY))
         val grid = GridLayout(this).apply { columnCount = 2 }
         for ((key, label) in acts) {
             val b = button(label) { sendAct(key) }
@@ -79,7 +79,7 @@ class MainActivity : Activity() {
             })
         }
         root.addView(sizeRow)
-        root.addView(text("· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 \"진행해줘!\" 하고 인사해요.\n· 잡고 위로 던지면 떨어져서 띠용~ 해요.\n· 알림창의 [펫 끄기]로도 끌 수 있어요.", 13f, false, Color.DKGRAY))
+        root.addView(text("· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 인사해요.\n· 잡고 위로 던지면 떨어져서 띠용~ 해요.\n· 알림창의 [펫 끄기]로도 끌 수 있어요.", 13f, false, Color.DKGRAY))
 
         setContentView(ScrollView(this).apply { addView(root) })
     }

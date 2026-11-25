@@ -97,7 +97,7 @@ class PetService : Service() {
         val stop = PendingIntent.getService(this, 1, Intent(this, PetService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)
         val n = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle("진행해줘 펫이 돌아다니는 중")
+            .setContentTitle(Flavor.notifTitle)
             .setContentText("눌러서 모션 메뉴 열기")
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "펫 끄기", stop).build())

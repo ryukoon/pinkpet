@@ -21,10 +21,7 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 object Catalog {
-    val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
-        "sleep" to "잠자기", "wave" to "손인사", "dance" to "춤추기", "look" to "두리번", "stretch" to "기지개",
-        "pen" to "펜 칼싸움", "ramen" to "몰래 라면", "power" to "파워업 변신", "chicken" to "치킨 변신", "cfly" to "🐔 하늘 날기")
-    val menu: List<Pair<String, String>> get() = specials + Moves.all.map { (k, m) -> k to (if (m.chicken) "🐔 " else "") + m.label }
+    val menu: List<Pair<String, String>> get() = Flavor.specials + Moves.all.map { (k, m) -> k to (if (m.chicken) "🐔 " else "") + m.label }
 }
 
 class Plat(val x1: Float, val x2: Float, val y: Float, val floor: Boolean)
@@ -77,7 +74,8 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         "run" to ActDef("달리기", 1.5f, 3f, 1.2f, move = 180f, fx = "💦", fxEvery = .6f),
         "jump" to ActDef("점프", .3f, .3f, 1.6f),
         "sit" to ActDef("앉기", 3f, 6f, 1f),
-        "sleep" to ActDef("잠자기", 6f, 9f, .7f, fx = "z", fxEvery = .8f, fxKind = "z"),
+        "sleep" to ActDef("잠자기", Flavor.sleepMin, Flavor.sleepMax, .9f, fx = "z", fxEvery = .8f, fxKind = "z"),
+        "kick" to ActDef("공차기", 99f, 99f, 1f),
         "wave" to ActDef("손인사", 1.8f, 2.6f, 1f, says = listOf("안녕! 👋", "반가워!", "하이~")),
         "dance" to ActDef("춤추기", 3f, 5f, 1f, fx = "♪", fxEvery = .5f),
         "look" to ActDef("두리번", 2.5f, 4f, 1.4f, says = listOf("?", "뭐지?", "음…")),
@@ -89,9 +87,20 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         "cfly" to ActDef("하늘 날기", 8f, 12f, 2.5f)
     )
     private val chickenOnly = setOf("cfly")
+    private val allowed: Set<String> = Flavor.specials.map { it.first }.toSet()
     // 비행·일반 모션용 변수
     private var tx = 0f; private var ty = 0f; private var fvx = 0f; private var fvy = 0f; private var loopT = 0f; private var sayT = 0f; private var evIdx = 0
     val drawY get() = y - pose.lift * SC
+    // 공
+    private var bState = "none"; private var bx = 0f; private var bY = 0f; private var bgy = 0f; private var bvx = 0f; private var bvy = 0f
+    private var brot = 0f; private var bCrashed = false; private var bT = 0f; private var kct = -1f
+    private val ballBmp: android.graphics.Bitmap = android.graphics.Bitmap.createBitmap(8, 8, android.graphics.Bitmap.Config.ARGB_8888).also { b ->
+        val rows = arrayOf("..XXXX..", ".XWWWWX.", "XWWBBWWX", "XWBBBBWX", "XWWBBWWX", "XBWWWWBX", ".XBWWBX.", "..XXXX..")
+        for (yy in 0 until 8) for (xx in 0 until 8) {
+            val ch = rows[yy][xx]
+            if (ch != '.') b.setPixel(xx, yy, when (ch) { 'X' -> Color.parseColor("#2a1f3d"); 'W' -> Color.WHITE; else -> Color.parseColor("#3a3a48") })
+        }
+    }
 
     private fun rnd(a: Float, b: Float) = a + Random.nextFloat() * (b - a)
     private fun fl(v: Float) = kotlin.math.floor(v).toInt()
@@ -118,7 +127,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
 
     // ================= 모션 시작 =================
     fun force(name: String) {
-        if (!acts.containsKey(name) && !Moves.all.containsKey(name)) return
+        if (!(acts.containsKey(name) && name in allowed) && !Moves.all.containsKey(name)) return
         if (state == "act" || state == "land") { if (plat == null) plat = floor; startAct(name) }
     }
 
@@ -138,7 +147,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         val a = acts.getValue(name)
         dur = rnd(a.d0, a.d1)
         if (name == "walk" || name == "run") dir = if (Random.nextBoolean()) -1 else 1
-        ph = 0; kt = 0f; sw = -1; ki = 0; ks = 0f; ks2 = 0f; flipIdx = -1; kf = -1
+        ph = 0; kt = 0f; kct = -1f; sw = -1; ki = 0; ks = 0f; ks2 = 0f; flipIdx = -1; kf = -1
         a.says?.let { say(it.random(), 1.6f) }
         if (name == "jump") planJump()
         if (name == "cfly") {
@@ -156,7 +165,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
     }
 
     private fun nextAct() {
-        val keys = (acts.keys + Moves.all.keys).filter { it != last }
+        val keys = (acts.keys.filter { it in allowed } + Moves.all.keys).filter { it != last && !(it == "kick" && (plat?.floor != true || bState != "none")) }
         val total = keys.sumOf { weightOf(it).toDouble() }.toFloat()
         var r = Random.nextFloat() * total
         for (k in keys) { r -= weightOf(k); if (r <= 0f) { startAct(k); return } }
@@ -219,7 +228,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         if (longFired) return
         val prev = dPrevPlat
         if (dMoved < 10 * D && dTime < .35f && prev != null) {
-            plat = prev; y = prev.y; startAct("wave"); say("진행해줘!", 1.3f); floater("❤"); sfx.pop(); return
+            plat = prev; y = prev.y; startAct("wave"); say(Flavor.tapSay, 1.3f); floater("❤"); sfx.pop(); return
         }
         var nvx = 0f; var nvy = 0f
         val recent = hist.filter { clock - it[0] < .11f }
@@ -310,6 +319,7 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
         if (form == Form.CHICKEN && state == "act" && act in listOf("idle", "look", "sit", "chicken")) pp.box = true
         pose = pp
 
+        ballUpdate(dt)
         // 효과 갱신
         if (bubbleT > 0) bubbleT -= dt
         floaters.forEach { it.age += dt }; floaters.removeAll { it.age > (if (it.kind == "z") 1.8f else 1.2f) }
@@ -385,6 +395,36 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
                     val f = fl(t * 3) % 3; if (f != kf) { kf = f; if (f == 0) sfx.slurp() }
                 }
             }
+            "kick" -> {
+                kt += dt
+                when (ph) {
+                    0 -> {
+                        if (kt > .35f && bState == "none") { bState = "rest"; bx = x + dir * 10 * SC; bY = plat?.y ?: floor.y; bgy = bY; bvx = 0f; bvy = 0f; bCrashed = false; bT = 0f }
+                        if (kt > .75f) { ph = 1; kt = 0f }
+                    }
+                    1 -> { val nx = x - dir * 60 * D * dt; if (nx > minX && nx < maxX) x = nx; if (kt > .9f) { ph = 2; kt = 0f; say("간다~!", 1f) } }
+                    2 -> {
+                        x += dir * 230 * D * dt
+                        if (abs(bx - x) <= 8 * SC || kt > 2f) { ph = 3; kt = 0f; bState = "fly"; bvx = dir * 1150 * D; bvy = -420 * D; sfx.stab() }
+                    }
+                    3 -> if (kt > .3f) { ph = 4; kt = 0f; kct = -1f }
+                    4 -> {
+                        if (bCrashed && kct < 0) { kct = 0f; say("헉!!", 1.2f) }
+                        if (kct >= 0) kct += dt
+                        if (kct > 1.2f) { ph = 5; kt = 0f; say(listOf("어떡해!! 유리가…", "내가 안 그랬어…!").random(), 1.4f) }
+                        else if (kt > 4f) nextAct()
+                    }
+                    5 -> {
+                        ks2 += dt; if (ks2 > .4f) { ks2 = 0f; floater("💦", "", rnd(-12f, 12f)) }
+                        val s = fl(kt / .18f); if (s != flipIdx) { flipIdx = s; dir = -dir }
+                        if (kt > 1.4f) { ph = 6; kt = 0f; dir = if (x > W / 2) 1 else -1; say("도망쳐~!! 🐻💨", 1.4f) }
+                    }
+                    else -> {
+                        x += dir * 340 * D * dt
+                        if (x < -40 * D || x > W + 40 * D) { state = "away"; awayT = 1.6f; bubbleT = 0f }
+                    }
+                }
+            }
             "cfly" -> {
                 ks += dt; ks2 += dt; sayT += dt
                 if (ki == 0 || hypot(tx - x, ty - y) < 30 * D || ks > 2.6f) {
@@ -449,6 +489,18 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
                 if (ph == 0) return Pose(sx = cos(t * 22) * (1 - t * .3f), aL = "up", aR = "up", eyes = "closed", mouth = "open")
                 return Pose(box = true, mouth = "smile", hy = fl(t * 3) % 2)
             }
+            "kick" -> {
+                val f = fl(kt * 10) % 4
+                return when (ph) {
+                    0 -> Pose(by = 13, hy = 2, aR = "out", look = 1)
+                    1 -> Pose(legs = arrayOf("walkB", "stand", "walkA", "stand")[f], mouth = "smile", look = 1)
+                    2 -> Pose(legs = if (f % 2 == 1) "runA" else "walkB", hy = f % 2, by = 12 + f % 2, aL = if (f % 2 == 1) "out" else "hip", aR = if (f % 2 == 1) "hip" else "out", mouth = "open", hx = 1)
+                    3 -> Pose(legs = "kick", aL = "out", aR = "up", mouth = "open", hx = 1, sx = 1.06f)
+                    4 -> if (kct < 0) Pose(eyes = "wide", mouth = "o") else Pose(eyes = "wide", mouth = "open", aL = "up", aR = "up", sy = 1.06f, sx = .95f, hx = fl(kt * 14) % 2)
+                    5 -> { val j = fl(kt * 14) % 2; Pose(aL = if (j == 1) "up" else "out", aR = if (j == 1) "out" else "up", eyes = "wide", mouth = "open", hx = if (j == 1) 1 else -1, legs = if (j == 1) "walkA" else "walkB") }
+                    else -> Pose(legs = if (f % 2 == 1) "runA" else "walkB", hy = f % 2, by = 12 + f % 2, aL = "up", aR = "up", mouth = "open", eyes = "wide", hx = 1)
+                }
+            }
             "cfly" -> {
                 val f = ((clock * 10).toInt()) % 2
                 var r = (fvx / D * .03f).coerceIn(-15f, 15f) * dir
@@ -466,6 +518,24 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
             }
         }
         return Pose()
+    }
+
+    private fun ballUpdate(dt: Float) {
+        if (bState == "none") return
+        val r = 4 * SC
+        if (bState == "rest") {
+            if (act != "kick" || state != "act") { bT += dt; if (bT > 3f) bState = "none" }
+            return
+        }
+        bvy += G * dt; bx += bvx * dt; bY += bvy * dt; brot += bvx / D * dt * 1.6f
+        if (bY >= bgy) { bY = bgy; bvy = -bvy * .45f; bvx *= .85f; if (abs(bvy) < 70 * D) bvy = 0f }
+        if (!bCrashed && (bx >= W - r || bx <= r)) {
+            val right = bx >= W - r
+            bx = if (right) W - r else r; bCrashed = true
+            shatter(if (right) W else 0f, bY - r, false)
+            bvx = -bvx * .22f; bvy = -180 * D
+        }
+        if (bCrashed) { bx = bx.coerceIn(r, W - r); bT += dt; if (bT > 2.8f) bState = "none" }
     }
 
     // ================= 일반 모션 =================
@@ -588,6 +658,14 @@ class Engine(private val density: Float, private val sfx: Sfx, private val openM
             val w = max(16 * D, (if (pose.lying) 17 else 12) * SC - dist * .08f)
             fill.color = Color.argb((90 * max(.2f, 1 - dist / (400 * D))).toInt(), 30, 10, 40)
             tmpRect.set(x - w / 2, gy - 4 * D, x + w / 2, gy + 4 * D); c.drawOval(tmpRect, fill)
+        }
+        // 공
+        if (bState != "none") {
+            val r = 4 * SC
+            bmpPaint.alpha = if (bCrashed && bT > 2.2f) (255 * max(0f, 1 - (bT - 2.2f) / .6f)).toInt() else 255
+            c.save(); c.translate(bx, bY - r); c.rotate(brot)
+            tmpRect.set(-r, -r, r, r); c.drawBitmap(ballBmp, null, tmpRect, bmpPaint)
+            c.restore(); bmpPaint.alpha = 255
         }
         // 오라
         val ac = if (form == Form.POWER) 1f else charge
