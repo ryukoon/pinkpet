@@ -102,7 +102,7 @@ object SiaDef : CharDef {
     override val sleepMax = 10f
     override val scale = .92f
     override val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
-        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개")
+        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개") + KidsExtras.specials
     override val moves get() = SiaMoves.all
     override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = SiaSprite.render(p)
 }
@@ -115,7 +115,12 @@ object WooDef : CharDef {
     override val sleepMax = 9f
     override val scale = .84f
     override val specials = listOf("idle" to "가만히", "walk" to "걷기", "run" to "달리기", "jump" to "점프", "sit" to "앉기",
-        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개")
+        "sleep" to "자기", "wave" to "손인사", "dance" to "춤", "look" to "두리번", "stretch" to "기지개") + KidsExtras.specials
     override val moves get() = WooMoves.all
     override fun render(p: Pose, f: Form, nowMs: Long): Bitmap = WooSprite.render(p)
+}
+
+object KidsExtras {
+    val specials = listOf("superJump" to "🦘 슈퍼 점프 (아이콘 위로)", "flyUp" to "🦸 날아서 아이콘 위로",
+        "ladder" to "🪜 사다리 타기", "slide" to "🛝 미끄럼틀 타기", "drone" to "🚁 드론 타고 날기", "cloud" to "☁️ 근두운 타기", "tree" to "🌳 나무·난 아래서 쉬기")
 }

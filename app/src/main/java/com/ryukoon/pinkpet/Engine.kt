@@ -15,6 +15,7 @@ import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -84,7 +85,15 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
         "power" to ActDef("파워업 변신", 99f, 99f, .6f),
         "chicken" to ActDef("치킨 변신", 99f, 99f, .6f),
         "ramen" to ActDef("몰래 라면", 8f, 8f, .8f),
-        "cfly" to ActDef("하늘 날기", 8f, 12f, 2.5f)
+        "cfly" to ActDef("하늘 날기", 8f, 12f, 2.5f),
+        "superJump" to ActDef("슈퍼 점프", 99f, 99f, 2f),
+        "flyUp" to ActDef("날아서 아이콘 위로", 99f, 99f, 1.5f),
+        "ladder" to ActDef("사다리", 99f, 99f, 1.6f),
+        "slide" to ActDef("미끄럼틀", 99f, 99f, 1.6f),
+        "drone" to ActDef("드론", 99f, 99f, 1.3f),
+        "cloud" to ActDef("근두운", 99f, 99f, 1.3f),
+        "tree" to ActDef("나무 그늘", 99f, 99f, 1.3f),
+        "contest" to ActDef("대결", 99f, 99f, 0f)
     )
     private val chickenOnly = setOf("cfly")
     private val allowed: Set<String> = def.specials.map { it.first }.toSet()
@@ -135,7 +144,53 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
     val stateName get() = state
     val actName get() = act
     val isChicken get() = form == Form.CHICKEN
-    private val busyActs = setOf("pen", "kick", "power", "chicken", "cfly", "ramen")
+    private val busyActs = setOf("pen", "kick", "power", "chicken", "cfly", "ramen", "superJump", "flyUp", "ladder", "slide", "drone", "cloud", "tree", "contest")
+
+    // ================= 놀이 소품 · 낙하산 · 대결 =================
+    var toys: List<Toy> = emptyList()
+    private val toyActs = setOf("ladder", "slide", "drone", "cloud", "tree")
+    private var useToy: Toy? = null
+    private var style = 0
+    private var slX = 0f; private var slY = 0f
+    private var chuteArmed = false; private var chuteChecked = false; private var chuteT = 0f
+    private var flyPlat: Plat? = null
+    var cKind = ""; var cStart = 0f; var cEnd = 0f; var cSpeed = 0f; var cPeriod = .5f
+    var cReady = false; var cGo = false; var cDone = false; var cCount = 0; var cWin = 0
+    private fun toyOf(type: String): Toy? = toys.firstOrNull { it.type == type && it.rider == null }
+    private val onFloor get() = plat?.floor == true
+    private val kidsMode get() = "ladder" in allowed
+
+    fun startContest(kind: String, start: Float, end: Float, speed: Float, period: Float) {
+        if (state != "act" && state != "land") return
+        cKind = kind; cStart = start; cEnd = end; cSpeed = speed; cPeriod = period
+        cReady = false; cGo = false; cDone = false; cCount = 0; cWin = 0
+        if (plat == null) plat = floor
+        y = plat?.y ?: floor.y
+        startAct("contest")
+    }
+    fun contestResult(win: Boolean, text: String) { cWin = if (win) 1 else -1; cDone = true; ph = 3; kt = 0f; say(text, 2f); if (win) { floater("🏆", "boing"); sfx.boing(.8f) } else floater("💦") }
+
+    private fun walkTo(tx: Float, sp: Float, dt: Float): Boolean {
+        val dx = tx - x
+        if (abs(dx) < 4 * D) return true
+        dir = if (dx > 0) 1 else -1
+        x += dir * min(abs(dx), sp * D * dt)
+        return false
+    }
+    private fun walkPose(t: Float): Pose { val f = fl(t * 8) % 4; return Pose(legs = arrayOf("walkA", "stand", "walkB", "stand")[f], hy = f % 2, by = 12 + f % 2, mouth = "smile") }
+
+    /** 드론·근두운 비행 */
+    private fun flyStep(dt: Float, lines: List<String>) {
+        ks += dt; ks2 += dt; sayT += dt
+        if (ki == 0 || hypot(tx - x, ty - y) < 30 * D || ks > 2.8f) { ki = 1; ks = 0f; tx = rnd(minX, maxX); ty = rnd(H * .18f, floor.y - 110 * D) }
+        val dx = tx - x; val dy = ty - y; val d = max(1f, hypot(dx, dy)); val sp = 220 * D; val k = min(1f, dt * 2.2f)
+        fvx += (dx / d * sp - fvx) * k; fvy += (dy / d * sp - fvy) * k
+        x += fvx * dt; y += fvy * dt + sin(clock * 6) * 20 * D * dt
+        x = x.coerceIn(minX, maxX); y = y.coerceIn(H * .12f, floor.y)
+        if (abs(fvx) > 25 * D) dir = sign(fvx).toInt()
+        if (ks2 > .45f) { ks2 = 0f; floater(listOf("✨", "♪", "💨", "🌟").random(), "", rnd(-16f, 16f)) }
+        if (sayT > 2.6f) { sayT = 0f; say(lines.random(), 1.5f) }
+    }
     /** 다른 펫이 끼어들어도 되는 상태인지 */
     val canInteract get() = (state == "act" && act !in busyActs && def.moves[act]?.events?.isEmpty() != false) || state == "land"
     fun has(name: String) = (acts.containsKey(name) && name in allowed) || def.moves.containsKey(name)
@@ -190,6 +245,14 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
         ph = 0; kt = 0f; kct = -1f; sw = -1; ki = 0; ks = 0f; ks2 = 0f; flipIdx = -1; kf = -1
         a.says?.let { say(it.random(), 1.6f) }
         if (name == "jump") planJump()
+        if (name in toyActs) {
+            useToy = if (name == "tree") (toyOf("tree") ?: toyOf("plant")) else toyOf(name)
+            if (useToy == null) { startAct("look"); say("먼저 메뉴에서 소품을 놓아주세요!", 1.8f); return }
+            if (plat == null) { plat = floor; y = floor.y }
+            if (plat?.floor != true) { say("내려가서 해야지~", 1.2f); goAir(dir * 120 * D, -200 * D, "fall"); return }
+        }
+        if (name == "drone" || name == "cloud") { ki = 0; ks = 0f; ks2 = 0f; sayT = 0f; fvx = 0f; fvy = 0f }
+        if (name == "superJump") say(listOf("흐읍… 슈퍼 점프 준비!", "저 위로 올라가야지!", "영차… 간다!").random(), 1.2f)
         if (name == "cfly") {
             plat = null; fvx = 0f; fvy = -260 * D; ki = 0; ks = 0f; ks2 = 0f; loopT = 0f; sayT = 0f
             say("날아오른다아~!!", 1.4f); floater("💨"); sfx.jump()
@@ -202,6 +265,12 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
         if (mv != null && mv.spicy && !spicyOn) return 0f
         if (mv != null) return if (mv.chicken) (if (ch) mv.w else 0f) else (if (ch) mv.w * .4f else mv.w)
         if (k in chickenOnly) return if (ch) acts.getValue(k).w else 0f
+        when (k) {
+            "superJump", "flyUp" -> return if (onFloor && icons.isNotEmpty()) acts.getValue(k).w * 1.4f else .25f
+            "ladder", "slide", "drone", "cloud" -> return if (onFloor && toyOf(k) != null) acts.getValue(k).w else 0f
+            "tree" -> return if (onFloor && (toyOf("tree") ?: toyOf("plant")) != null) acts.getValue(k).w else 0f
+            "contest" -> return 0f
+        }
         return acts.getValue(k).w
     }
 
@@ -241,7 +310,7 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
         x = nx; say("어어?!", 1f); goAir(sd * sp * .7f, -80 * D, "fall"); return true
     }
 
-    private fun goAir(nvx: Float, nvy: Float, kind: String) { state = "air"; vx = nvx; vy = nvy; plat = null; airKind = kind }
+    private fun goAir(nvx: Float, nvy: Float, kind: String) { state = "air"; vx = nvx; vy = nvy; plat = null; airKind = kind; chuteChecked = false }
 
     private fun groundMove(sp: Float, dt: Float) {
         val nx = x + dir * sp * D * dt
@@ -355,7 +424,14 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
             vy += G * dt; x += vx * dt; y += vy * dt
             if (x < minX) { x = minX; vx = -vx * .5f; dir = 1 }
             if (x > maxX) { x = maxX; vx = -vx * .5f; dir = -1 }
-            if (vy > 0) {
+            if (kidsMode && !chuteChecked && vy > 150 * D) {
+                chuteChecked = true
+                if (chuteArmed || (floor.y - y > 260 * D && Random.nextFloat() < .45f)) {
+                    chuteArmed = false; state = "chute"; chuteT = 0f; vx *= .4f
+                    floater("낙하산 펼쳐!", "boing"); sfx.pop()
+                }
+            }
+            if (state == "air" && vy > 0) {
                 var hit: Plat? = null
                 for (q in icons) if (py <= q.y + 1 && y >= q.y && x >= q.x1 && x <= q.x2 && (hit == null || q.y < hit.y)) hit = q
                 if (hit == null && y >= floor.y) hit = floor
@@ -367,6 +443,22 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
                 else Pose(aL = if (f == 1) "up" else "out", aR = if (f == 1) "out" else "up", legs = if (f == 1) "tuck" else "dangle",
                     mouth = "open", eyes = "wide", rot = (vx / D * .012f).coerceIn(-15f, 15f) * dir)
                 if (squash > 0) { squash -= dt; p.sy = .7f; p.sx = 1.3f }
+            }
+        }
+        if (state == "chute") {
+            chuteT += dt
+            val py = y
+            vy = 110 * D; vx *= (1 - min(1f, dt * .8f)); x += vx * dt + sin(chuteT * 1.6f) * 25 * D * dt; y += vy * dt
+            x = x.coerceIn(minX, maxX)
+            var hit: Plat? = null
+            for (q in icons) if (py <= q.y + 1 && y >= q.y && x >= q.x1 && x <= q.x2 && (hit == null || q.y < hit.y)) hit = q
+            if (hit == null && y >= floor.y) hit = floor
+            if (hit != null) {
+                y = hit.y; plat = hit; state = "land"; landT = 0f; landA = .12f; impact = 0f; vx = 0f; vy = 0f
+                floater("사뿐~", "boing"); sfx.boing(.4f)
+            } else {
+                val f = fl(chuteT * 2) % 2
+                p = Pose(aL = "up", aR = "up", legs = if (f == 1) "dangle" else "tuck", mouth = if (chuteT % 3f < 1.5f) "smile" else "open", eyes = "open", rot = sin(chuteT * 1.6f) * 8f)
             }
         }
         if (state == "land") {
@@ -497,6 +589,154 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
                     }
                 }
             }
+            "superJump" -> {
+                kt += dt
+                if (ph == 0) {
+                    if (fl(kt * 10) % 3 == 0 && ks2 != kt) { ks2 = kt }
+                    if (kt > .7f) {
+                        ph = 1
+                        val cand = icons.filter { it.y < y - 40 * D && abs((it.x1 + it.x2) / 2 - x) < W * .7f }
+                        if (cand.isNotEmpty()) {
+                            val p = cand.random(); val tgx = rnd(p.x1 + 6 * D, p.x2 - 6 * D); val h = y - p.y; val top = h + 45 * D
+                            jvy = -sqrt(2 * G * top); val tt = sqrt(2 * top / G) + sqrt(2 * (top - h) / G); jvx = (tgx - x) / tt
+                        } else { jvy = -sqrt(2 * G * 380 * D); jvx = dir * rnd(60f, 160f) * D }
+                        if (abs(jvx) > 5) dir = sign(jvx).toInt()
+                        floater("슈퍼 점프!!", "boing"); sfx.jump(); sfx.vibrate(20); goAir(jvx, jvy, "jump")
+                    }
+                }
+            }
+            "flyUp" -> {
+                kt += dt
+                if (ph == 0) {
+                    ph = 1; plat = null
+                    if (icons.isNotEmpty()) { val p = icons.random(); tx = rnd(p.x1 + 6 * D, p.x2 - 6 * D); ty = p.y; flyPlat = p }
+                    else { flyPlat = null; tx = rnd(minX, maxX); ty = H * .35f }
+                    say(listOf("날아서 올라가자~!", "슈퍼맨 출동!", "하늘을 날아라~").random(), 1.4f); fvx = 0f; fvy = -220 * D; sfx.jump()
+                }
+                val dx = tx - x; val dy = ty - y; val d = max(1f, hypot(dx, dy)); val k = min(1f, dt * 3f)
+                fvx += (dx / d * 300 * D - fvx) * k; fvy += (dy / d * 300 * D - fvy) * k
+                x += fvx * dt; y += fvy * dt
+                if (abs(fvx) > 20 * D) dir = sign(fvx).toInt()
+                ks2 += dt; if (ks2 > .3f) { ks2 = 0f; floater("💨", "", rnd(-10f, 10f)) }
+                val fp = flyPlat
+                if (d < 14 * D || kt > 6f) {
+                    if (fp != null && d < 24 * D) { x = tx; y = fp.y; plat = fp; state = "land"; landT = 0f; landA = .2f; impact = 0f; floater("착지!", "boing"); sfx.boing(.5f) }
+                    else goAir(fvx * .3f, 0f, "fall")
+                }
+            }
+            "ladder" -> {
+                val tz = useToy ?: run { nextAct(); return }
+                kt += dt
+                when (ph) {
+                    0 -> if (walkTo(tz.x, 90f, dt)) { ph = 1; kt = 0f; plat = null; say(listOf("사다리 올라가자!", "영차영차~").random(), 1.2f) }
+                    1 -> {
+                        y -= 70 * D * dt
+                        val top = tz.y - tz.hPx * .93f
+                        if (y <= top) {
+                            y = top; ph = 2; kt = 0f; style = Random.nextInt(4)
+                            say(listOf("낙하산 펼쳐서 내려가야지!", "저 아이콘까지 점프!", "무, 무서워… 너무 높아…", "뛰어내린다~ 야호!")[style], 1.6f)
+                        }
+                    }
+                    2 -> if (kt > (if (style == 2) 1.8f else .9f)) {
+                        when (style) {
+                            0 -> chuteArmed = true
+                            1 -> chuteArmed = icons.isEmpty()
+                            2 -> { floater("으아아아!!", "boing"); sfx.boing(.8f) }
+                            else -> floater("야호~!", "boing")
+                        }
+                        if (style == 1 && icons.isNotEmpty()) { planJump(); goAir(jvx, jvy, "jump") }
+                        else goAir(dir * rnd(80f, 200f) * D, -380 * D, "jump")
+                    }
+                }
+            }
+            "slide" -> {
+                val tz = useToy ?: run { nextAct(); return }
+                kt += dt
+                val left = tz.x - tz.wPx / 2; val top = tz.y - tz.hPx
+                when (ph) {
+                    0 -> if (walkTo(left + tz.wPx * .07f, 90f, dt)) { ph = 1; kt = 0f; plat = null }
+                    1 -> {
+                        y -= 70 * D * dt
+                        if (y <= top + tz.hPx * .06f) {
+                            y = top + tz.hPx * .06f; ph = 2; kt = 0f; style = Random.nextInt(5); x = left + tz.wPx * .22f
+                            say(listOf("출발~! 신난다!", "스릴 만점이겠다!", "무서운데… 내려가야 해?", "간다아아아!!", "빙글빙글 돌면서 간다~")[style], 1.4f)
+                        }
+                    }
+                    2 -> if (kt > .8f) { ph = 3; kt = 0f; slX = x; slY = y; dir = 1 }
+                    3 -> {
+                        val q = min(1f, (kt / 1.4f).pow(1.5f))
+                        val ex = tz.x + tz.wPx / 2 - tz.wPx * .04f; val ey = tz.y
+                        x = slX + (ex - slX) * q; y = slY + (ey - slY) * q
+                        ks2 += dt
+                        if (ks2 > .28f) { ks2 = 0f; floater(listOf("야호~!", "꺄아아~!", "무서워어~", "으아아아!!", "빙글빙글~")[style], if (style == 3) "boing" else "", rnd(-10f, 10f)) }
+                        if (q >= 1f) { plat = floor; y = floor.y; goAir(220 * D, -260 * D, "fall"); floater("슈웅~!", "boing"); sfx.boing(.6f) }
+                    }
+                }
+            }
+            "drone" -> {
+                val tz = useToy ?: run { nextAct(); return }
+                kt += dt
+                if (ph == 0) { if (walkTo(tz.x, 100f, dt)) { ph = 1; kt = 0f; tz.rider = this; plat = null; say("드론 출발~!", 1.3f); fvy = -200 * D; sfx.jump() } }
+                else {
+                    flyStep(dt, listOf("와 하늘이다!", "드론 최고~", "높다 높아!", "꽉 잡아야지!"))
+                    tz.x = x; tz.y = drawY - 14 * SC
+                    if (kt > 8f) {
+                        tz.rider = null; chuteArmed = Random.nextFloat() < .65f
+                        say(if (chuteArmed) "이제 내려가자! 낙하산!" else "으아 손 놓쳤다~!", 1.3f); goAir(fvx * .4f, 0f, "fall")
+                    }
+                }
+            }
+            "cloud" -> {
+                val tz = useToy ?: run { nextAct(); return }
+                kt += dt
+                when (ph) {
+                    0 -> if (walkTo(tz.x, 100f, dt)) { ph = 1; kt = 0f; tz.rider = this; plat = null; y = tz.y - tz.hPx * .55f; say("근두운아~ 가자!", 1.4f); sfx.jump() }
+                    1 -> {
+                        flyStep(dt, listOf("구름 타고 슝~", "근두운 최고!", "하늘 산책이다~", "우와 시원하다!"))
+                        tz.x = x; tz.y = y + tz.hPx * .55f
+                        if (kt > 9f) { ph = 2; kt = 0f; say("이제 내려갈까~", 1.2f) }
+                    }
+                    else -> {
+                        y = min(floor.y, y + 160 * D * dt); tz.x = x; tz.y = y + tz.hPx * .55f
+                        if (y >= floor.y - 1) { tz.rider = null; plat = floor; y = floor.y; say("근두운 고마워~", 1.4f); nextAct() }
+                    }
+                }
+            }
+            "tree" -> {
+                val tz = useToy ?: run { nextAct(); return }
+                val spot = if (tz.type == "tree") tz.x + tz.wPx * .22f else tz.x + tz.wPx * .7f
+                if (ph == 0) {
+                    if (walkTo(spot, 80f, dt)) {
+                        ph = 1; kt = 0f; style = Random.nextInt(3); dir = if (tz.x > x) 1 else -1
+                        say(listOf("그늘 아래서 쉬어야지~", "책 읽기 딱 좋다", "잠깐 눈 좀 붙일까…")[style], 1.6f)
+                    }
+                } else {
+                    kt += dt; ks += dt
+                    if (ks > (if (style == 2) .8f else 1.4f)) { ks = 0f; floater(listOf("🍃", "📖", "z")[style], if (style == 2) "z" else "", rnd(-10f, 10f)) }
+                    if (kt > 9f) nextAct()
+                }
+            }
+            "contest" -> {
+                kt += dt
+                when (ph) {
+                    0 -> if (walkTo(cStart, 160f, dt)) { ph = 1; kt = 0f; cReady = true; dir = if (cEnd >= cStart) 1 else -1; say("준비!", 1f) }
+                    1 -> if (cGo) { ph = 2; kt = 0f; ks = 0f } else if (kt > 10f) nextAct()
+                    2 -> {
+                        if (cKind == "swim" || cKind == "run") {
+                            val s = sign(cEnd - cStart)
+                            x += s * cSpeed * (.85f + Random.nextFloat() * .3f) * D * dt
+                            ks2 += dt; if (ks2 > .3f) { ks2 = 0f; floater(if (cKind == "swim") "💦" else "💨", "", rnd(-10f, 10f)) }
+                            if ((cEnd - x) * s <= 0f) { x = cEnd; cDone = true; ph = 4; kt = 0f }
+                        } else {
+                            ks += dt
+                            if (ks > cPeriod) { ks = 0f; if (cKind != "shoot" || Random.nextFloat() < .65f) { cCount++; floater("$cCount", "", rnd(-8f, 8f)) } else floater("앗!", "", 0f) }
+                            if (kt > 5f) { cDone = true; ph = 4; kt = 0f }
+                        }
+                    }
+                    3 -> if (kt > 3.5f) nextAct()
+                    else -> if (kt > 6f) nextAct()
+                }
+            }
             "cfly" -> {
                 ks += dt; ks2 += dt; sayT += dt
                 if (ki == 0 || hypot(tx - x, ty - y) < 30 * D || ks > 2.6f) {
@@ -572,6 +812,61 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
                     5 -> { val j = fl(kt * 14) % 2; Pose(aL = if (j == 1) "up" else "out", aR = if (j == 1) "out" else "up", eyes = "wide", mouth = "open", hx = if (j == 1) 1 else -1, legs = if (j == 1) "walkA" else "walkB") }
                     else -> Pose(legs = if (f % 2 == 1) "runA" else "walkB", hy = f % 2, by = 12 + f % 2, aL = "up", aR = "up", mouth = "open", eyes = "wide", hx = 1)
                 }
+            }
+            "superJump" -> return Pose(by = 14, hy = 3, ly = 19, legs = "tuck", eyes = "angry", mouth = "flat", sx = 1.1f, sy = .88f, hx = if (fl(kt * 16) % 2 == 0) 1 else -1)
+            "flyUp" -> return Pose(aL = "up", aR = "out", legs = "dangle", mouth = "grin", eyes = "sparkle", rot = -12f)
+            "ladder" -> {
+                if (ph == 0) return walkPose(t)
+                if (ph == 1) { val f = fl(kt * 6) % 2; return Pose(aL = if (f == 1) "up" else "hold", aR = if (f == 1) "hold" else "up", legs = if (f == 1) "walkA" else "walkB", mouth = "smile") }
+                return when (style) {
+                    0 -> Pose(aL = "out", aR = "out", mouth = "smile")
+                    1 -> Pose(look = if (fl(kt * 2) % 2 == 0) 1 else -1, eyes = "sparkle", mouth = "grin")
+                    2 -> Pose(aL = "hold", aR = "hold", eyes = "tear", mouth = "o", hx = Random.nextInt(-1, 2))
+                    else -> Pose(aL = "up", aR = "up", mouth = "grin", eyes = "closed")
+                }
+            }
+            "slide" -> {
+                if (ph == 0) return walkPose(t)
+                if (ph == 1) { val f = fl(kt * 6) % 2; return Pose(aL = if (f == 1) "up" else "hold", aR = if (f == 1) "hold" else "up", legs = if (f == 1) "walkA" else "walkB", mouth = "smile") }
+                val sit = Pose(by = 14, hy = 2, ly = 20, legs = "sit")
+                if (ph == 2) return sit.copy(eyes = if (style == 2) "tear" else "sparkle", mouth = if (style == 2) "o" else "smile")
+                return when (style) {
+                    0 -> sit.copy(aL = "up", aR = "up", mouth = "grin", eyes = "closed")
+                    1 -> sit.copy(aL = "up", aR = "up", mouth = "open", eyes = "wide")
+                    2 -> sit.copy(aL = "hold", aR = "hold", mouth = "o", eyes = "tear")
+                    3 -> sit.copy(aL = "up", aR = "out", mouth = "open", eyes = "wide", hx = Random.nextInt(-1, 2))
+                    else -> sit.copy(aL = "out", aR = "out", mouth = "grin", eyes = "closed", sx = cos(kt * 22), rot = kt * 300f, pivot = 11f)
+                }
+            }
+            "drone" -> {
+                if (ph == 0) return walkPose(t)
+                val f = fl(kt * 3) % 2
+                return Pose(aL = "up", aR = "up", legs = if (f == 1) "dangle" else "tuck", mouth = if (f == 1) "open" else "grin", eyes = "sparkle", rot = (fvx / D * .02f).coerceIn(-10f, 10f) * dir)
+            }
+            "cloud" -> {
+                if (ph == 0) return walkPose(t)
+                return if (fl(kt / 2) % 2 == 0) Pose(aL = "out", aR = "out", mouth = "grin", eyes = "closed") else Pose(by = 14, hy = 2, ly = 20, legs = "sit", mouth = "smile", eyes = "sparkle")
+            }
+            "tree" -> {
+                if (ph == 0) return walkPose(t)
+                return when (style) {
+                    0 -> Pose(by = 14, hy = 2, ly = 20, legs = "sit", eyes = "closed", mouth = "smile", blush = true)
+                    1 -> Pose(by = 14, hy = 3, ly = 20, legs = "sit", aR = "hold", prop = "book", look = if (fl(kt / 2) % 2 == 0) 1 else -1)
+                    else -> Pose(lying = true, eyes = "closed", mouth = if (fl(kt * 1.2f) % 2 == 1) "o" else "flat")
+                }
+            }
+            "contest" -> {
+                if (ph == 0) { val f = fl(kt * 12) % 2; return Pose(legs = if (f == 1) "runA" else "walkB", aL = if (f == 1) "out" else "hip", aR = if (f == 1) "hip" else "out", mouth = "open") }
+                if (ph == 1) return Pose(eyes = "angry", mouth = "grin", aL = "hip", aR = "hip")
+                if (ph == 3 || ph == 4) {
+                    if (cWin > 0) { val j = fl(kt * 4) % 2; return Pose(aL = "up", aR = "up", mouth = "grin", eyes = "closed", lift = if (j == 1) 3f else 0f) }
+                    if (cWin < 0) return Pose(eyes = "tear", mouth = "o", aL = "hip", aR = "hip", by = 13, hy = 2)
+                    return Pose(mouth = "open", aL = "hip", aR = "hip", eyes = "closed")
+                }
+                if (cKind == "swim") { val f = fl(kt * 3) % 2; return Pose(lying = true, eyes = if (f == 1) "closed" else "open", aL = if (f == 1) "up" else "down", aR = if (f == 1) "down" else "up", prop = "swimcap") }
+                if (cKind == "run") { val f = fl(kt * 12) % 2; return Pose(legs = if (f == 1) "runA" else "walkB", aL = if (f == 1) "out" else "hip", aR = if (f == 1) "hip" else "out", mouth = "grin", hx = 1, rot = 6f) }
+                val mv = def.moves[cKind]
+                return if (mv != null) movePose(mv, kt % mv.dur) else Pose(mouth = "open")
             }
             "cfly" -> {
                 val f = ((clock * 10).toInt()) % 2
@@ -727,6 +1022,15 @@ class Engine(private val density: Float, private val sfx: Sfx, val def: CharDef,
             fill.color = Color.argb((235 * a).toInt(), 215, 235, 255); c.drawPath(sp, fill)
             stroke.strokeWidth = 1f * D; stroke.color = Color.argb((150 * a).toInt(), 30, 20, 60); c.drawPath(sp, stroke)
             c.restore()
+        }
+        // 낙하산
+        if (state == "chute") {
+            val cx = x; val topY = drawY - 40 * SC; val w = 28 * SC
+            tmpRect.set(cx - w / 2, topY, cx + w / 2, topY + 16 * SC)
+            for (i in 0 until 6) { fill.color = if (i % 2 == 0) Color.parseColor("#e8312a") else Color.WHITE; c.drawArc(tmpRect, 180f + i * 30f, 30f, true, fill) }
+            stroke.strokeWidth = 1f * D; stroke.color = Color.parseColor("#55555f")
+            c.drawLine(cx - w / 2, topY + 8 * SC, cx - 4 * SC, drawY - 17 * SC, stroke); c.drawLine(cx + w / 2, topY + 8 * SC, cx + 4 * SC, drawY - 17 * SC, stroke)
+            c.drawLine(cx, topY + 8 * SC, cx, drawY - 18 * SC, stroke)
         }
         // 그림자
         if (state != "away") {

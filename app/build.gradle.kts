@@ -10,8 +10,8 @@ android {
     defaultConfig {
         minSdk = 30
         targetSdk = 35
-        versionCode = 7
-        versionName = "2.2"
+        versionCode = 8
+        versionName = "2.3"
     }
 
     // 매번 같은 키로 서명 → 새 버전을 덮어서 설치 가능

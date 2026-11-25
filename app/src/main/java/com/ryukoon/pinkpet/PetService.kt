@@ -24,6 +24,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** 다른 앱 위에 펫(여유곰, 부장님)을 띄우는 서비스 */
@@ -33,6 +34,7 @@ class PetService : Service() {
         const val ACTION_STOP = "stop"
         const val ACTION_ACT = "act"
         const val ACTION_PREFS = "prefs"
+        const val ACTION_CONTEST = "contest"
         const val CHANNEL = "pet"
         @Volatile var running = false
         fun isOn(ctx: Context, id: String) = ctx.getSharedPreferences("pet", MODE_PRIVATE).getBoolean("on_$id", true)
@@ -64,7 +66,8 @@ class PetService : Service() {
                 for (p in pets.values) p.engine.setIcons(list)
             }
             for (p in pets.values) { p.engine.update(dt, now); movePet(p) }
-            Roster.tick(pets.mapValues { it.value.engine }, minOf(dt, .05f), gridPx)
+            Roster.tick(pets.mapValues { it.value.engine }, toyList, minOf(dt, .05f), gridPx)
+            updateToys(minOf(dt, .05f))
             fxView.invalidate()
             for (p in pets.values) p.view.invalidate()
             Choreographer.getInstance().postFrameCallback(this)
@@ -90,6 +93,7 @@ class PetService : Service() {
         measure()
         wm.addView(fxView, fxLp)
         attached = true
+        syncToys()
         syncPets()
         running = true
         Choreographer.getInstance().postFrameCallback(frame)
@@ -104,7 +108,8 @@ class PetService : Service() {
                 val p = pets[id] ?: pets.values.firstOrNull()
                 if (act != null && p != null) p.engine.force(act)
             }
-            ACTION_PREFS -> if (attached) { applyPrefs(); measure(); relayout(); syncPets() }
+            ACTION_PREFS -> if (attached) { applyPrefs(); measure(); relayout(); syncPets(); syncToys() }
+            ACTION_CONTEST -> if (attached) Roster.startContest(intent.getStringExtra("kind") ?: "pool", pets.mapValues { it.value.engine }, toyList, gridPx)
         }
         return START_STICKY
     }
@@ -156,8 +161,84 @@ class PetService : Service() {
         fxLp.width = b.width(); fxLp.height = b.height(); fxLp.x = 0; fxLp.y = 0
     }
 
+    // ================= 놀이 소품 창 =================
+    private class ToyWin(val toy: Toy, val view: View, val lp: WindowManager.LayoutParams)
+    private val toyWins = LinkedHashMap<String, ToyWin>()
+    private var toyList: List<Toy> = emptyList()
+    private var toyClock = 0f
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun syncToys() {
+        if (!Roster.hasToys) return
+        val prefs = getSharedPreferences("pet", MODE_PRIVATE)
+        var added = false
+        for ((type, _) in Toys.types) {
+            val frac = prefs.getFloat("toy_$type", -1f)
+            val existing = toyWins[type]
+            if (frac >= 0f && existing == null) {
+                val toy = Toy(type)
+                toy.homeX = frac * screenW; toy.x = toy.homeX; toy.y = floorY
+                sizeToy(toy)
+                val view = object : View(wctx) {
+                    override fun onDraw(canvas: Canvas) { canvas.save(); canvas.scale(gridPx, gridPx); Toys.draw(canvas, type, toyClock); canvas.restore() }
+                }
+                val lp = baseLp(toy.wPx.roundToInt(), toy.hPx.roundToInt(), true)
+                var ox = 0f; var oy = 0f
+                view.setOnTouchListener { _, e ->
+                    if (toy.rider != null) return@setOnTouchListener true
+                    when (e.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> { toy.dragging = true; ox = toy.x - e.rawX; oy = toy.y - e.rawY }
+                        MotionEvent.ACTION_MOVE -> { toy.x = (e.rawX + ox).coerceIn(toy.wPx / 3, screenW - toy.wPx / 3); toy.y = (e.rawY + oy).coerceAtMost(floorY); toy.homeX = toy.x }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            toy.dragging = false
+                            getSharedPreferences("pet", MODE_PRIVATE).edit().putFloat("toy_$type", (toy.homeX / screenW).coerceIn(0f, 1f)).apply()
+                        }
+                    }
+                    true
+                }
+                placeToy(toy, lp)
+                wm.addView(view, lp)
+                toyWins[type] = ToyWin(toy, view, lp)
+                added = true
+            } else if (frac < 0f && existing != null) {
+                existing.toy.rider = null
+                try { wm.removeView(existing.view) } catch (_: Exception) { }
+                toyWins.remove(type)
+            }
+        }
+        toyList = toyWins.values.map { it.toy }
+        for (p in pets.values) p.engine.toys = toyList
+        if (added) {
+            // 펫이 소품보다 위에 보이도록 다시 올리기
+            for (p in pets.values) { try { wm.removeView(p.view); wm.addView(p.view, p.lp) } catch (_: Exception) { } }
+        }
+    }
+
+    private fun sizeToy(toy: Toy) { val (w, h) = Toys.size(toy.type); toy.wPx = w * gridPx; toy.hPx = h * gridPx }
+    private fun placeToy(toy: Toy, lp: WindowManager.LayoutParams) { lp.x = (toy.x - toy.wPx / 2).roundToInt(); lp.y = (toy.y - toy.hPx).roundToInt() }
+
+    private fun updateToys(dt: Float) {
+        toyClock += dt
+        for (tw in toyWins.values) {
+            val t = tw.toy
+            if (t.rider == null && !t.dragging) {
+                val k = min(1f, dt * 4f)
+                t.x += (t.homeX - t.x) * k; t.y += (floorY - t.y) * k
+            }
+            val ox = tw.lp.x; val oy = tw.lp.y
+            placeToy(t, tw.lp)
+            if (ox != tw.lp.x || oy != tw.lp.y) try { wm.updateViewLayout(tw.view, tw.lp) } catch (_: Exception) { }
+            if (t.type == "drone" || t.type == "cloud" || t.type == "pool") tw.view.invalidate()
+        }
+    }
+
     private fun relayout() {
         try { wm.updateViewLayout(fxView, fxLp) } catch (_: Exception) { }
+        for (tw in toyWins.values) {
+            sizeToy(tw.toy); tw.toy.homeX = tw.toy.homeX.coerceIn(0f, screenW)
+            tw.lp.width = tw.toy.wPx.roundToInt(); tw.lp.height = tw.toy.hPx.roundToInt(); placeToy(tw.toy, tw.lp)
+            try { wm.updateViewLayout(tw.view, tw.lp) } catch (_: Exception) { }
+        }
         for (p in pets.values) {
             sizePet(p)
             computePos(p)
@@ -199,12 +280,13 @@ class PetService : Service() {
             }
         }
         Roster.hook(pets.mapValues { it.value.engine })
+        for (p in pets.values) p.engine.toys = toyList
         if (pets.isEmpty()) stopSelf()
     }
 
     /** 캐릭터 배율에 맞춰 펫 창 크기 계산 */
     private fun sizePet(p: Pet) {
-        val g = gridPx * p.engine.def.scale
+        val g = gridPx * p.engine.def.scale * getSharedPreferences("pet", MODE_PRIVATE).getFloat("scale_${p.engine.def.id}", 1f)
         p.engine.setScreen(screenW, screenH, floorY, g)
         p.w = (32 * g).roundToInt(); p.h = (38 * g).roundToInt(); p.feet = 29 * g
         p.lp.width = p.w; p.lp.height = p.h
@@ -243,6 +325,8 @@ class PetService : Service() {
             Choreographer.getInstance().removeFrameCallback(frame)
             for (p in pets.values) try { wm.removeView(p.view) } catch (_: Exception) { }
             pets.clear()
+            for (tw in toyWins.values) try { wm.removeView(tw.view) } catch (_: Exception) { }
+            toyWins.clear()
             try { wm.removeView(fxView) } catch (_: Exception) { }
             sfx.release()
             try { wctx.unregisterComponentCallbacks(screenCallbacks) } catch (_: Exception) { }

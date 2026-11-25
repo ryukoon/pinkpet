@@ -18,7 +18,9 @@ import android.widget.Button
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
+import kotlin.random.Random
 
 /** 권한 설정 + 펫 켜기/끄기 + 모션 메뉴 */
 class MainActivity : Activity() {
@@ -29,6 +31,7 @@ class MainActivity : Activity() {
     private lateinit var grid: GridLayout
     private lateinit var motionTitle: TextView
     private val toggles = HashMap<String, Button>()
+    private val toyBtns = HashMap<String, Pair<Button, String>>()
     private val pickers = HashMap<String, Button>()
     private var target: CharDef = Roster.all.first()
     private val dp get() = resources.displayMetrics.density
@@ -85,6 +88,34 @@ class MainActivity : Activity() {
         grid = GridLayout(this).apply { columnCount = 2 }
         root.addView(grid)
 
+        if (Roster.hasToys) {
+            root.addView(section("🎪 놀이 소품 놓기"))
+            root.addView(text("눌러서 화면에 놓거나 치워요. 화면에 놓인 소품은 손가락으로 끌어서 옮길 수 있어요. 캐릭터들이 알아서 타고 놀아요.", 12f, false, Color.DKGRAY))
+            val tg = GridLayout(this).apply { columnCount = 2 }
+            for ((type, label) in Toys.types) {
+                val b = button("", purple) {
+                    val on = prefs.getFloat("toy_$type", -1f) >= 0f
+                    prefs.edit().putFloat("toy_$type", if (on) -1f else (.15f + Random.nextFloat() * .7f)).apply()
+                    if (!PetService.running) togglePet(target) else notifyPrefs()
+                    status.postDelayed({ refresh() }, 300)
+                }
+                b.textSize = 14f
+                b.layoutParams = GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
+                    width = 0; setMargins((3 * dp).toInt(), (3 * dp).toInt(), (3 * dp).toInt(), (3 * dp).toInt())
+                }
+                toyBtns[type] = b to label; tg.addView(b)
+            }
+            root.addView(tg)
+            val cRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for ((kind, label) in listOf("pool" to "🏊 수영 대결!", "gym" to "🏟 체육관 대결!")) {
+                cRow.addView(button(label, brown) {
+                    if (PetService.running) { try { startService(Intent(this, PetService::class.java).setAction(PetService.ACTION_CONTEST).putExtra("kind", kind)) } catch (_: Exception) { }; moveTaskToBack(true) }
+                }.apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins((3 * dp).toInt(), 0, (3 * dp).toInt(), 0) } })
+            }
+            root.addView(cRow)
+            root.addView(text("· 수영장이나 체육관 위에 두 캐릭터를 끌어다 놓으면 바로 대결해요. 둘 다 켜져 있어야 해요.", 12f, false, Color.DKGRAY))
+        }
+
         root.addView(section("4. 설정"))
         soundBtn = button("", purple) {
             prefs.edit().putBoolean("sound", !prefs.getBoolean("sound", true)).apply(); refresh(); notifyPrefs()
@@ -96,6 +127,21 @@ class MainActivity : Activity() {
             })
         }
         root.addView(sizeRow)
+        for (def in Roster.all) {
+            val label = text("", 14f, true, darkC)
+            fun show(v: Int) { label.text = "${def.name} 크기: ${v}%" }
+            val cur = (prefs.getFloat("scale_${def.id}", 1f) * 100).toInt()
+            show(cur)
+            root.addView(label)
+            root.addView(SeekBar(this).apply {
+                max = 150; progress = cur - 50
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) { show(p + 50) }
+                    override fun onStartTrackingTouch(sb: SeekBar?) { }
+                    override fun onStopTrackingTouch(sb: SeekBar?) { prefs.edit().putFloat("scale_${def.id}", (progress + 50) / 100f).apply(); notifyPrefs() }
+                })
+            })
+        }
         if (Roster.hasSpicy) {
             spicyBtn = button("", purple) {
                 prefs.edit().putBoolean("spicy", !prefs.getBoolean("spicy", false)).apply()
@@ -137,6 +183,11 @@ class MainActivity : Activity() {
             (pickers[def.id]?.background as? GradientDrawable)?.setColor(if (def == target) brown else grey)
         }
         iconBtn.text = if (IconMap.connected) "아이콘 위 올라타기: 켜짐 ✅" else "아이콘 위 올라타기 켜기 (접근성)"
+        for ((type, bl) in toyBtns) {
+            val on = prefs.getFloat("toy_$type", -1f) >= 0f
+            bl.first.text = if (on) "${bl.second} ✓ (치우기)" else "${bl.second} 놓기"
+            (bl.first.background as? GradientDrawable)?.setColor(if (on) brown else purple)
+        }
         motionTitle.text = "3. ${target.name} 모션 (${target.menu.size}종)"
         spicyBtn?.text = if (prefs.getBoolean("spicy", false)) "🌶 엄마 매운맛 대사: 켜짐 (눌러서 끄기)" else "🌶 엄마 매운맛 대사: 꺼짐 (아이 앞에선 끄기 추천)"
         soundBtn.text = if (prefs.getBoolean("sound", true)) "소리 켜짐 🔊 (눌러서 끄기)" else "소리 꺼짐 🔇 (눌러서 켜기)"

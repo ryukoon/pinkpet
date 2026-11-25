@@ -10,6 +10,8 @@ object Roster {
     const val subtitle = "수아와 엄마가 홈 화면과 다른 앱 위를 돌아다녀요. 둘 다 켜두면 만났을 때 서로 반응해요."
     const val notif = "수아네 펫이 돌아다니는 중"
     const val hints = "· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 인사해요. 잡고 던지면 떨어져서 띠용~ 해요.\n· 수아가 엄마를 만나면 안아달라고 하거나, 카드 써도 되냐고 물어요.\n· 매일 오후 4시엔 수아가 간식 카드를 조르러 가요.\n· 엄마는 \"안돼.\" 해놓고 결국 사줘요."
+    const val hasToys = false
+    fun startContest(kind: String, pets: Map<String, Engine>, toys: List<Toy>, grid: Float) { }
     const val hasSpicy = true
     val all: List<CharDef> = listOf(SuaDef, MomDef)
     fun byId(id: String?): CharDef? = all.firstOrNull { it.id == id }
@@ -19,7 +21,7 @@ object Roster {
 
     private var cool = 3f
     private var lastAskDay = -1
-    fun tick(pets: Map<String, Engine>, dt: Float, grid: Float) {
+    fun tick(pets: Map<String, Engine>, toys: List<Toy>, dt: Float, grid: Float) {
         val sua = pets["sua"]
         val mom = pets["mom"]
         // 매일 오후 4시: 간식 카드 조르기

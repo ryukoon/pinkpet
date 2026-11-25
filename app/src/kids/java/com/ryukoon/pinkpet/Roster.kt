@@ -10,6 +10,56 @@ object Roster {
     const val notif = "시아·정우가 뛰어다니는 중"
     const val hints = "· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 인사해요. 잡고 던지면 떨어져서 띠용~ 해요.\n· 둘이 만나면 달리기 시합, 농구 패스, 하이파이브, 마라탕 vs 소고기 토론을 해요.\n· 정우가 격파로 화면을 깨면 시아가 \"야! 유정우!\" 해요."
     const val hasSpicy = false
+    const val hasToys = true
+
+    // ================= 수영장 · 체육관 대결 =================
+    private var contest = false
+    private var contestCool = 12f
+    private var announced = false
+    private var winnerId = ""
+    private var cKindNow = ""
+
+    fun startContest(kind: String, pets: Map<String, Engine>, toys: List<Toy>, grid: Float) {
+        val sia = pets["sia"] ?: return
+        val woo = pets["woo"] ?: return
+        val venue = toys.firstOrNull { it.type == kind } ?: run { sia.talk(if (kind == "pool") "수영장을 먼저 놓아주세요!" else "체육관을 먼저 놓아주세요!"); return }
+        val left = venue.x - venue.wPx / 2; val right = venue.x + venue.wPx / 2
+        cKindNow = if (kind == "pool") "swim" else listOf("run", "jumprope", "pushup", "shoot").random()
+        when (cKindNow) {
+            "swim" -> { sia.startContest("swim", left + 8 * grid, right - 6 * grid, 95f, 0f); woo.startContest("swim", left + 14 * grid, right - 6 * grid, 88f, 0f) }
+            "run" -> { val l = left - 20 * grid; val r = right + 20 * grid; sia.startContest("run", l, r, 230f, 0f); woo.startContest("run", l + 6 * grid, r, 215f, 0f) }
+            "jumprope" -> { sia.startContest("jumprope", venue.x - 14 * grid, venue.x - 14 * grid, 0f, .36f + Random.nextFloat() * .08f); woo.startContest("jumprope", venue.x + 14 * grid, venue.x + 14 * grid, 0f, .38f + Random.nextFloat() * .08f) }
+            "pushup" -> { sia.startContest("pushup", venue.x - 14 * grid, venue.x - 14 * grid, 0f, .46f + Random.nextFloat() * .08f); woo.startContest("pushup", venue.x + 14 * grid, venue.x + 14 * grid, 0f, .40f + Random.nextFloat() * .08f) }
+            else -> { sia.startContest("shoot", venue.x - 14 * grid, venue.x - 14 * grid, 0f, .7f); woo.startContest("shoot", venue.x + 14 * grid, venue.x + 14 * grid, 0f, .7f) }
+        }
+        val title = mapOf("swim" to "🏊 수영 대결!", "run" to "🏃 달리기 대결!", "jumprope" to "줄넘기 대결!", "pushup" to "💪 팔굽혀펴기 대결!", "shoot" to "🏀 슛 대결!")[cKindNow] ?: "대결!"
+        woo.talk("$title 제가 MC 겸 선수입니다!")
+        sia.sayLater("좋아, 누나가 이긴다!", 1.6f)
+        contest = true; announced = false; winnerId = ""; contestCool = 30f
+    }
+
+    private fun runContest(sia: Engine, woo: Engine) {
+        if (sia.actName != "contest" || woo.actName != "contest") { contest = false; return }
+        if (!sia.cGo && sia.cReady && woo.cReady) {
+            sia.cGo = true; woo.cGo = true
+            sia.popAt("준비… 땅!", (sia.x + woo.x) / 2, minOf(sia.y, woo.y) - 60 * 3f)
+        }
+        val race = cKindNow == "swim" || cKindNow == "run"
+        if (race && winnerId.isEmpty() && (sia.cDone || woo.cDone)) {
+            val siaWins = sia.cDone && (!woo.cDone || Random.nextBoolean())
+            winnerId = if (siaWins) "sia" else "woo"
+            if (siaWins) { sia.contestResult(true, if (cKindNow == "swim") "1등! 수영은 내가 최고~" else "역시 내가 제일 빠르지~"); woo.contestResult(false, "누나 너무 빨라…! 다시 해!") }
+            else { woo.contestResult(true, "이겼다!! 태권도 3단의 힘!"); sia.contestResult(false, "아깝다! 한 판 더!") }
+        }
+        if (!race && winnerId.isEmpty() && sia.cDone && woo.cDone) {
+            val s = sia.cCount; val w = woo.cCount
+            winnerId = if (s >= w) "sia" else "woo"
+            if (s == w) { sia.contestResult(true, "${s}개! 무승부네~"); woo.contestResult(true, "${w}개! 비겼다!") }
+            else if (s > w) { sia.contestResult(true, "${s}개! 내가 이겼다!"); woo.contestResult(false, "${w}개… 졌다! 다음엔 꼭!") }
+            else { woo.contestResult(true, "${w}개! 정우 승리!"); sia.contestResult(false, "${s}개… 아깝다!") }
+        }
+        if (winnerId.isNotEmpty() && !announced) announced = true
+    }
     val all: List<CharDef> = listOf(SiaDef, WooDef)
     fun byId(id: String?): CharDef? = all.firstOrNull { it.id == id }
     fun spawnFrac(id: String) = if (id == "sia") .3f else .7f
@@ -19,9 +69,18 @@ object Roster {
     }
 
     private var cool = 3f
-    fun tick(pets: Map<String, Engine>, dt: Float, grid: Float) {
+    fun tick(pets: Map<String, Engine>, toys: List<Toy>, dt: Float, grid: Float) {
         val sia = pets["sia"] ?: return
         val woo = pets["woo"] ?: return
+        // ---- 대결 진행 ----
+        if (contest) { runContest(sia, woo); return }
+        contestCool -= dt
+        val venue = toys.firstOrNull { it.type == "pool" } ?: toys.firstOrNull { it.type == "gym" }
+        if (venue != null && contestCool <= 0 && sia.canInteract && woo.canInteract && sia.stateName == "act" && woo.stateName == "act") {
+            val inside = { e: Engine -> abs(e.x - venue.x) < venue.wPx / 2 && abs(e.y - venue.y) < 30 * grid }
+            // 둘 다 수영장/체육관 위에 올려두면 바로, 아니면 가끔 스스로 대결
+            if ((inside(sia) && inside(woo)) || Random.nextFloat() < dt / 25f) { startContest(if (venue.type == "pool") "pool" else "gym", pets, toys, grid); return }
+        }
         cool -= dt
         if (cool > 0) return
         if (sia.stateName == "away" || woo.stateName == "away") return
