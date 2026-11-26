@@ -12,6 +12,8 @@ object Roster {
     const val hints = "· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 인사해요. 잡고 던지면 떨어져서 띠용~ 해요.\n· 수아가 엄마를 만나면 안아달라고 하거나, 카드 써도 되냐고 물어요.\n· 매일 오후 4시엔 수아가 간식 카드를 조르러 가요.\n· 엄마는 \"안돼.\" 해놓고 결국 사줘요."
     const val hasToys = false
     fun startContest(kind: String, pets: Map<String, Engine>, toys: List<Toy>, grid: Float) { }
+    const val isMaker = false
+    fun init(ctx: android.content.Context) { }
     const val hasSpicy = true
     val all: List<CharDef> = listOf(SuaDef, MomDef)
     fun byId(id: String?): CharDef? = all.firstOrNull { it.id == id }

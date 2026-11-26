@@ -9,6 +9,8 @@ object Roster {
     const val subtitle = "달리기 대장 시아와 태권도 3단 MC 정우가 홈 화면과 다른 앱 위를 뛰어다녀요. 둘 다 켜두면 만났을 때 같이 놀아요."
     const val notif = "시아·정우가 뛰어다니는 중"
     const val hints = "· 펫을 꾹 누르고 있으면 이 메뉴가 열려요.\n· 톡 누르면 인사해요. 잡고 던지면 떨어져서 띠용~ 해요.\n· 둘이 만나면 달리기 시합, 농구 패스, 하이파이브, 마라탕 vs 소고기 토론을 해요.\n· 정우가 격파로 화면을 깨면 시아가 \"야! 유정우!\" 해요."
+    const val isMaker = false
+    fun init(ctx: android.content.Context) { }
     const val hasSpicy = false
     const val hasToys = true
 

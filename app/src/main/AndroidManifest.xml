@@ -34,6 +34,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".MakerActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".PetService"
             android:exported="false"

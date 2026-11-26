@@ -10,7 +10,7 @@ android {
     defaultConfig {
         minSdk = 30
         targetSdk = 35
-        versionCode = 8
+        versionCode = 9
         versionName = "2.3"
     }
 
@@ -40,6 +40,11 @@ android {
             dimension = "app"
             applicationId = "com.ryukoon.siawoo"
             manifestPlaceholders["appLabel"] = "시아·정우 펫"
+        }
+        create("maker") {
+            dimension = "app"
+            applicationId = "com.ryukoon.dotpetmaker"
+            manifestPlaceholders["appLabel"] = "도트펫 메이커"
         }
     }
 

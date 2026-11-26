@@ -78,6 +78,7 @@ class PetService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Roster.init(this)
         startAsForeground()
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return }
         val display = getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)
@@ -249,6 +250,12 @@ class PetService : Service() {
     /** 설정에 맞게 펫을 추가/제거. 하나도 없으면 서비스 종료 */
     @SuppressLint("ClickableViewAccessibility")
     private fun syncPets() {
+        // 지워진 캐릭터, 다시 만든 캐릭터 정리
+        val ids = Roster.all.map { it.id }.toSet()
+        for (id in pets.keys.toList()) {
+            val old = pets[id] ?: continue
+            if (id !in ids || Roster.byId(id) !== old.engine.def) { try { wm.removeView(old.view) } catch (_: Exception) { }; pets.remove(id) }
+        }
         for (def in Roster.all) {
             val on = isOn(this, def.id)
             val existing = pets[def.id]

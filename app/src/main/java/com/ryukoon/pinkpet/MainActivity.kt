@@ -33,7 +33,8 @@ class MainActivity : Activity() {
     private val toggles = HashMap<String, Button>()
     private val toyBtns = HashMap<String, Pair<Button, String>>()
     private val pickers = HashMap<String, Button>()
-    private var target: CharDef = Roster.all.first()
+    private var target: CharDef = PinkDef
+    private var seenVersion = -1
     private val dp get() = resources.displayMetrics.density
     private val purple = Color.parseColor("#5d3f82")
     private val brown = Color.parseColor("#8a5a2b")
@@ -43,6 +44,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Roster.init(this)
+        seenVersion = CharStore.version
+        target = Roster.all.firstOrNull() ?: PinkDef
         Roster.byId(intent?.getStringExtra("pet"))?.let { target = it }
         Engine.spicyOn = prefs.getBoolean("spicy", false)
         val root = LinearLayout(this).apply {
@@ -53,6 +57,23 @@ class MainActivity : Activity() {
         root.addView(text(Roster.title, 26f, true, darkC))
         root.addView(text(Roster.subtitle, 14f, false, Color.DKGRAY))
         status = text("", 14f, true, purple); root.addView(status)
+
+        if (Roster.isMaker) {
+            root.addView(section("🎨 내 캐릭터"))
+            root.addView(button("📷 사진으로 새 캐릭터 만들기", brown) { startActivity(Intent(this, MakerActivity::class.java)) })
+            for (c in CharStore.list()) {
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                row.addView(button("✏️ ${c.name} 고치기", purple) { startActivity(Intent(this, MakerActivity::class.java).putExtra("id", c.id)) }.apply {
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 3f).apply { setMargins(0, (3 * dp).toInt(), (3 * dp).toInt(), (3 * dp).toInt()) }
+                })
+                row.addView(button("🗑", grey) {
+                    android.app.AlertDialog.Builder(this).setMessage("${c.name} 캐릭터를 지울까요?").setPositiveButton("지우기") { _, _ ->
+                        CharStore.delete(c.id); notifyPrefs(); recreate()
+                    }.setNegativeButton("취소", null).show()
+                }.apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) } })
+                root.addView(row)
+            }
+        }
 
         root.addView(section("1. 처음 한 번만 설정"))
         root.addView(button("다른 앱 위에 표시 권한 켜기", purple) {
@@ -159,7 +180,11 @@ class MainActivity : Activity() {
         Roster.byId(intent.getStringExtra("pet"))?.let { target = it; buildGrid(); refresh() }
     }
 
-    override fun onResume() { super.onResume(); refresh() }
+    override fun onResume() {
+        super.onResume()
+        if (Roster.isMaker && CharStore.version != seenVersion) { seenVersion = CharStore.version; notifyPrefs(); recreate(); return }
+        refresh()
+    }
 
     private fun buildGrid() {
         grid.removeAllViews()
