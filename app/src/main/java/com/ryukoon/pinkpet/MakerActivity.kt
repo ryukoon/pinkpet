@@ -45,6 +45,8 @@ class MakerActivity : Activity() {
     private val rowUpdaters = ArrayList<() -> Unit>()
     private var poseIdx = 0
     private lateinit var root: LinearLayout
+    private lateinit var header: LinearLayout
+    private val palettes = ArrayList<GridLayout>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,18 +59,25 @@ class MakerActivity : Activity() {
             setPadding((18 * dp).toInt(), (20 * dp).toInt(), (18 * dp).toInt(), (40 * dp).toInt())
             setBackgroundColor(Color.parseColor("#f7eef2"))
         }
-        root.addView(text(if (editId == null) "새 캐릭터 만들기 🎨" else "캐릭터 고치기 ✏️", 24f, true, darkC))
-        root.addView(text("사진은 이 폰 안에서만 색을 분석하고 바로 버려요. 어디에도 저장하거나 보내지 않아요.", 13f, false, Color.DKGRAY))
+        root.addView(text("사진은 이 폰 안에서만 색을 분석하고 바로 버려요. 어디에도 저장하거나 보내지 않아요.", 12f, false, Color.DKGRAY))
 
+        // 위에 고정되는 미리보기 (스크롤해도 항상 보임)
+        header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((18 * dp).toInt(), (12 * dp).toInt(), (18 * dp).toInt(), (6 * dp).toInt())
+            setBackgroundColor(Color.parseColor("#efe3f2"))
+            elevation = 6 * dp
+        }
+        header.addView(text(if (editId == null) "새 캐릭터 만들기 🎨" else "캐릭터 고치기 ✏️", 18f, true, darkC).apply { setPadding(0, 0, 0, (4 * dp).toInt()) })
         preview = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
             background = GradientDrawable().apply { setColor(Color.parseColor("#b9a6d8")); cornerRadius = 16 * dp }
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (220 * dp).toInt()).apply { setMargins(0, (10 * dp).toInt(), 0, (6 * dp).toInt()) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (150 * dp).toInt())
             setOnClickListener { poseIdx++; updatePreview() }
         }
-        root.addView(preview)
-        root.addView(text("↑ 누르면 다른 자세를 보여줘요", 12f, false, Color.GRAY).apply { gravity = Gravity.CENTER })
-        status = text("", 14f, true, purple); root.addView(status)
+        header.addView(preview)
+        status = text("미리보기를 누르면 다른 자세를 보여줘요", 13f, true, purple).apply { gravity = Gravity.CENTER; setPadding(0, (4 * dp).toInt(), 0, 0) }
+        header.addView(status)
 
         root.addView(section("1. 기본 정보"))
         val gRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -128,7 +137,10 @@ class MakerActivity : Activity() {
         })
 
         CharStore.get(editId)?.let { c -> nameEt.setText(c.name); phraseEt.setText(c.phrases.joinToString("\n")) }
-        setContentView(ScrollView(this).apply { addView(root) })
+        val outer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor("#f7eef2")) }
+        outer.addView(header, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        outer.addView(ScrollView(this).apply { addView(root) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        setContentView(outer)
         updateAll()
     }
 
@@ -210,10 +222,36 @@ class MakerActivity : Activity() {
     }
 
     private fun colorRow(label: String, pal: List<Int>, get: () -> Int, set: (Int) -> Unit) {
-        val sw = TextView(this).apply { text = "      "; gravity = Gravity.CENTER }
-        fun step(d: Int) { val i = pal.indexOf(get()).let { if (it < 0) pal.indexOf(Palette.nearest(get(), pal)) else it }; set(pal[(i + d + pal.size) % pal.size]); updateAll() }
-        addRow(label, sw) { step(it) }
-        rowUpdaters.add { sw.background = GradientDrawable().apply { setColor(get()); cornerRadius = 8 * dp; setStroke((2 * dp).toInt(), darkC) } }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, (3 * dp).toInt(), 0, (3 * dp).toInt()) }
+        row.addView(TextView(this).apply { text = label; textSize = 14f; setTextColor(darkC); layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.3f) })
+        val sw = TextView(this).apply { text = "눌러서 색 고르기 ▾"; textSize = 13f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); setShadowLayer(3f, 0f, 0f, Color.BLACK) }
+        row.addView(sw, LinearLayout.LayoutParams(0, (44 * dp).toInt(), 2.5f))
+        root.addView(row)
+        // 펼쳐지는 팔레트
+        val grid = GridLayout(this).apply { columnCount = 6; visibility = android.view.View.GONE; setPadding(0, (4 * dp).toInt(), 0, (10 * dp).toInt()) }
+        val cells = ArrayList<Pair<Int, android.view.View>>()
+        for (col in pal) {
+            val cell = android.view.View(this)
+            cell.setOnClickListener { set(col); grid.visibility = android.view.View.GONE; updateAll() }
+            cell.layoutParams = GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
+                width = 0; height = (44 * dp).toInt(); setMargins((3 * dp).toInt(), (3 * dp).toInt(), (3 * dp).toInt(), (3 * dp).toInt())
+            }
+            cells.add(col to cell); grid.addView(cell)
+        }
+        palettes.add(grid)
+        root.addView(grid)
+        sw.setOnClickListener {
+            val open = grid.visibility != android.view.View.VISIBLE
+            palettes.forEach { it.visibility = android.view.View.GONE }
+            if (open) grid.visibility = android.view.View.VISIBLE
+        }
+        rowUpdaters.add {
+            sw.background = GradientDrawable().apply { setColor(get()); cornerRadius = 10 * dp; setStroke((2 * dp).toInt(), darkC) }
+            for ((col, cell) in cells) cell.background = GradientDrawable().apply {
+                setColor(col); cornerRadius = 10 * dp
+                if (col == get()) setStroke((4 * dp).toInt(), Color.parseColor("#ffcc33")) else setStroke((1 * dp).toInt(), Color.parseColor("#55506a"))
+            }
+        }
     }
 
     private fun addRow(label: String, mid: android.view.View, onStep: (Int) -> Unit) {
